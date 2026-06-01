@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: visiongate-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: visiongate
+    networks:
+      - visiongate-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: visiongate-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+      - ai-service
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/visiongate
+      JWT_SECRET: ${JWT_SECRET:-visiongate_prod_jwt_secret_change_me}
+      JWT_EXPIRE: 7d
+      AI_SERVICE_URL: http://ai-service:8000
+    volumes:
+      - backend_logs:/app/logs
+    networks:
+      - visiongate-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: visiongate-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000/api
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
+    networks:
+      - visiongate-network
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: docker/ai-service.Dockerfile
+    container_name: visiongate-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+    networks:
+      - visiongate-network
+
+volumes:
+  mongodb_data:
+  backend_logs:
+
+networks:
+  visiongate-network:
+    driver: bridge
