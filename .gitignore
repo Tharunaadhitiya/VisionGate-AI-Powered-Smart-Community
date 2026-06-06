@@ -17,3 +17,4 @@ Thumbs.db
 docker-compose.override.yml
 backend/vapid_keys.json
 backend/.env
+frontend/.env.local
