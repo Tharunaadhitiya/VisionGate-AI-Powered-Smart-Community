@@ -4,9 +4,9 @@ const Alert = require('../models/Alert');
 const { authenticate, authorize } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { paginateResults } = require('../utils/helpers');
-const { dispatchNotification } = require('../utils/notificationDispatch');
 const UserNotification = require('../models/UserNotification');
 const logger = require('../utils/logger');
+const { notifyUser, notifyAllAdmins, notifyAllSecurity, notifyRole } = require('../services/notificationHelper');
 
 const router = express.Router();
 
@@ -64,14 +64,22 @@ router.post('/', authenticate, [
     if (io) {
       io.emit('alert:received', payload);
     }
-    dispatchNotification({
-      alertId: alert._id,
-      broadcastTo: alertData.broadcastTo,
-      targetUsers: alertData.targetUsers,
-      io,
-      eventName: 'notification:received',
-      payload,
-    });
+
+    const targets = alertData.broadcastTo || ['all'];
+    if (targets.includes('all') || targets.includes('admin')) {
+      await notifyAllAdmins(io, { type: 'alert', title: alertData.title, body: alertData.message, data: { severity: alertData.severity || 'medium', alertId: alert._id?.toString() } });
+    }
+    if (targets.includes('all') || targets.includes('security')) {
+      await notifyAllSecurity(io, { type: 'alert', title: alertData.title, body: alertData.message, data: { severity: alertData.severity || 'medium', alertId: alert._id?.toString() } });
+    }
+    if (targets.includes('all') || targets.includes('residents')) {
+      await notifyRole(io, 'resident', { type: 'alert', title: alertData.title, body: alertData.message, data: { severity: alertData.severity || 'medium', alertId: alert._id?.toString() } });
+    }
+    if (alertData.targetUsers) {
+      for (const uid of alertData.targetUsers) {
+        await notifyUser(io, uid, { type: 'alert', title: alertData.title, body: alertData.message, data: { severity: alertData.severity || 'medium', alertId: alert._id?.toString() } });
+      }
+    }
     res.status(201).json({ success: true, message: 'Alert created', data: { alert: populated, sender } });
   } catch (error) {
     logger.error('Create alert error:', error);
@@ -130,14 +138,8 @@ router.post('/sos', authenticate, async (req, res) => {
       io.to('role:admin').emit('sos:emergency', payload);
       io.emit('alert:received', payload);
     }
-    dispatchNotification({
-      alertId: alert._id,
-      broadcastTo: ['all', 'security', 'admin'],
-      targetUsers: [req.userId],
-      io,
-      eventName: 'notification:received',
-      payload,
-    });
+    await notifyAllSecurity(io, { type: 'emergency_sos', title: 'SOS Emergency!', body: `${req.user.name} needs help! Flat ${req.user.flatNumber}, Tower ${req.user.tower}`, data: { severity: 'critical', alertId: alert._id?.toString(), userId: req.userId } });
+    await notifyAllAdmins(io, { type: 'emergency_sos', title: 'SOS Emergency!', body: `${req.user.name} needs help! Flat ${req.user.flatNumber}, Tower ${req.user.tower}`, data: { severity: 'critical', alertId: alert._id?.toString(), userId: req.userId } });
 
     res.status(201).json({ success: true, message: 'SOS alert sent', data: { alert: populated } });
   } catch (error) {

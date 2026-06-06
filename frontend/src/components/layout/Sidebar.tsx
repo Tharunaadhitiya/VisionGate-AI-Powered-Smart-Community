@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   Home, Users, Shield, Bell, AlertTriangle, FileText, CreditCard,
   Calendar, Camera, BarChart3, MessageSquare, LogOut,
-  X, Menu, BookUser, Megaphone, Bug,
+  X, Menu,   BookUser, Megaphone, Bug, Package, Search, Briefcase,
 } from 'lucide-react';
 import { useState } from 'react';
 import { MessageSquareText } from 'lucide-react';
@@ -24,10 +24,16 @@ const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = 
     { href: '/incidents', label: 'Incidents', icon: Bug },
     { href: '/alerts', label: 'Alerts', icon: Bell },
     { href: '/inbox', label: 'Inbox', icon: MessageSquareText },
+    { href: '/packages', label: 'Packages', icon: Package },
+    { href: '/lost-and-found', label: 'Lost & Found', icon: Search },
+    { href: '/skills', label: 'Skills', icon: Briefcase },
   ],
   security: [
     { href: '/dashboard/security', label: 'Dashboard', icon: Home },
     { href: '/visitors', label: 'Visitor Entry', icon: Users },
+    { href: '/packages', label: 'Packages', icon: Package },
+    { href: '/lost-and-found', label: 'Lost & Found', icon: Search },
+    { href: '/skills', label: 'Skills', icon: Briefcase },
     { href: '/directory', label: 'Directory', icon: BookUser },
     { href: '/surveillance', label: 'Surveillance', icon: Camera },
     { href: '/notices', label: 'Notices', icon: Megaphone },
@@ -37,6 +43,9 @@ const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = 
   resident: [
     { href: '/dashboard/resident', label: 'Dashboard', icon: Home },
     { href: '/visitors', label: 'My Visitors', icon: Users },
+    { href: '/packages', label: 'My Packages', icon: Package },
+    { href: '/lost-and-found', label: 'Lost & Found', icon: Search },
+    { href: '/skills', label: 'Skills', icon: Briefcase },
     { href: '/directory', label: 'Directory', icon: BookUser },
     { href: '/complaints', label: 'Complaints', icon: FileText },
     { href: '/maintenance', label: 'Maintenance', icon: CreditCard },

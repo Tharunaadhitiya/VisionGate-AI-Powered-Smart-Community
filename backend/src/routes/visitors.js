@@ -8,18 +8,78 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { paginateResults } = require('../utils/helpers');
 const logger = require('../utils/logger');
+const { notifyUser, notifyAllSecurity } = require('../services/notificationHelper');
 
 const router = express.Router();
 
 const STATUS_LABELS = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', entered: 'Entered', exited: 'Exited' };
 
+router.get('/towers', authenticate, async (req, res) => {
+  try {
+    logger.info('[GET /visitors/towers] Loading towers from registered residents...');
+    const towers = await House.getTowers();
+    const result = towers.map((t) => ({ tower: t }));
+    logger.info(`[GET /visitors/towers] Towers found: ${result.length ? result.map(r => r.tower).join(',') : 'none'}`);
+    res.json({ success: true, data: { towers: result } });
+  } catch (error) {
+    logger.error('[GET /visitors/towers] Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load towers' });
+  }
+});
+
+router.get('/flats/:tower', authenticate, async (req, res) => {
+  try {
+    const { tower } = req.params;
+    logger.info(`[GET /visitors/flats/${tower}] Loading flats...`);
+    const flats = await House.getFlatsByTower(tower);
+    const result = flats.map((f) => ({
+      id: f._id,
+      house_code: f.houseCode,
+      flat_number: f.flatNumber,
+      resident_id: f.residentId,
+    }));
+    logger.info(`[GET /visitors/flats/${tower}] ${result.length} flats found: ${result.map(r => r.house_code).join(',') || 'none'}`);
+    res.json({ success: true, data: { flats: result } });
+  } catch (error) {
+    logger.error(`[GET /visitors/flats/:tower] Error:`, error);
+    res.status(500).json({ success: false, message: 'Failed to load flats' });
+  }
+});
+
+router.get('/resident/:houseCode', authenticate, async (req, res) => {
+  try {
+    const { houseCode } = req.params;
+    logger.info(`[GET /visitors/resident/${houseCode}] Looking up resident...`);
+    const residents = await User.find({ role: 'resident', houseCode });
+    if (residents.length === 0) {
+      logger.warn(`[GET /visitors/resident/${houseCode}] No resident found`);
+      return res.status(404).json({ success: false, message: 'Resident not found' });
+    }
+    const r = residents[0];
+    const result = {
+      name: r.name,
+      email: r.email,
+      phone: r.phone,
+      tower: r.tower,
+      flat_number: r.flatNumber,
+      house_code: r.houseCode,
+    };
+    logger.info(`[GET /visitors/resident/${houseCode}] Found: ${r.name}`);
+    res.json({ success: true, data: { resident: result } });
+  } catch (error) {
+    logger.error(`[GET /visitors/resident/:houseCode] Error:`, error);
+    res.status(500).json({ success: false, message: 'Failed to load resident details' });
+  }
+});
+
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { page = 1, limit = 20, status, startDate, endDate } = req.query;
+    const { page = 1, limit = 20, status, startDate, endDate, residentId } = req.query;
     const { skip, limit: pageLimit } = paginateResults(page, limit);
     const filter = {};
 
-    if (req.user.role === 'resident') filter.residentId = req.userId;
+    if (residentId) filter.residentId = residentId;
+    else if (req.user.role === 'resident') filter.residentId = req.userId;
     if (req.user.role === 'security') filter.securityId = req.userId;
     if (status) filter.status = status;
     if (startDate || endDate) {
@@ -98,6 +158,12 @@ router.post('/', authenticate, authorize('security'), [
           residentName: residentUser.name,
         });
       }
+      await notifyUser(io, residentUser._id, {
+        type: 'visitorRequests',
+        title: 'Visitor Entry Request',
+        body: `Visitor: ${visitor.name}, Purpose: ${visitor.purpose}`,
+        data: { url: '/visitors', visitorId: visitor._id, severity: 'info' },
+      });
     } catch (notifErr) {
       logger.warn('Resident notification error:', notifErr.message);
     }
@@ -154,6 +220,14 @@ router.put('/:id/respond', authenticate, authorize('resident'), [
           action,
           residentName: resident.name,
           houseCode: visitor.houseCode,
+        });
+      }
+      if (visitor.securityId) {
+        await notifyUser(io, visitor.securityId, {
+          type: 'visitorApprovals',
+          title: action === 'approved' ? 'Visitor Approved' : 'Visitor Rejected',
+          body: `Resident: ${req.user.name}, House: ${visitor.houseCode}, Status: ${action}`,
+          data: { url: '/visitors', visitorId: visitor._id, severity: action === 'approved' ? 'success' : 'warning' },
         });
       }
     } catch (notifErr) {

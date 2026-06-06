@@ -2,7 +2,7 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Users, Camera, AlertTriangle, FileText, Bell, CreditCard, BarChart3, Shield, Activity, TrendingUp, Clock, CheckCircle, XCircle, MessageSquare, Send, UserPlus } from 'lucide-react';
+import { Users, Camera, AlertTriangle, FileText, Bell, CreditCard, BarChart3, Shield, Activity, TrendingUp, Clock, CheckCircle, XCircle, MessageSquare, Send, UserPlus, Search } from 'lucide-react';
 import { cn, formatDateTime, timeAgo } from '@/lib/utils';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import SOSEmergency from '@/components/dashboard/SOSEmergency';
@@ -12,6 +12,7 @@ import PaymentManagement from '@/components/dashboard/PaymentManagement';
 import UserDirectory from '@/components/dashboard/UserDirectory';
 import OnlineStatusBadge from '@/components/dashboard/OnlineStatusBadge';
 import AIInsights from '@/components/dashboard/AIInsights';
+import RecoveryRequests from '@/components/dashboard/RecoveryRequests';
 import { useAuth } from '@/hooks/useAuth';
 
 const COLORS = ['#6366f1', '#22c55e', '#ef4444', '#f59e0b', '#64748b', '#3b82f6'];
@@ -25,9 +26,14 @@ export default function AdminDashboard() {
   const [showUsers, setShowUsers] = useState(false);
   const [showPayments, setShowPayments] = useState(false);
   const [showDirectory, setShowDirectory] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryPending, setRecoveryPending] = useState(0);
+  const [skillAnalytics, setSkillAnalytics] = useState<any>(null);
 
   useEffect(() => {
     api.get('/analytics/dashboard').then((res) => setData(res.data)).finally(() => setLoading(false));
+    api.get('/recovery-requests').then((res) => setRecoveryPending((res.data?.requests || []).filter((r: any) => r.status === 'Pending').length)).catch(() => {});
+    api.get('/skills/analytics').then((res) => setSkillAnalytics(res.data?.data || null)).catch(() => {});
   }, []);
 
   if (loading) return <DashboardLayout><div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div></DashboardLayout>;
@@ -41,6 +47,7 @@ export default function AdminDashboard() {
     { label: "Today's Visitors", value: data.todayVisitors || 0, icon: Activity, color: 'text-secondary-500', bg: 'bg-secondary-50 dark:bg-secondary-500/10' },
     { label: 'Active Alerts', value: (data.alertStats || []).reduce((s: number, a: any) => s + a.count, 0), icon: Bell, color: 'text-danger-500', bg: 'bg-danger-50 dark:bg-danger-500/10' },
     { label: 'Total Complaints', value: (data.complaintStats || []).reduce((s: number, c: any) => s + c.count, 0), icon: FileText, color: 'text-warning-500', bg: 'bg-warning-50 dark:bg-warning-500/10' },
+    { label: 'Recovery Requests', value: recoveryPending, icon: Clock, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-500/10' },
   ];
 
   return (
@@ -116,6 +123,15 @@ export default function AdminDashboard() {
               <p className="text-xs text-surface-400">Search all community members</p>
             </div>
           </button>
+          <button onClick={() => setShowRecovery(true)} className="glass-card p-4 flex items-center gap-3 hover:shadow-xl transition-all">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-purple-500" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold">Recovery Requests {recoveryPending > 0 && <span className="badge badge-danger ml-1">{recoveryPending}</span>}</p>
+              <p className="text-xs text-surface-400">Manage credential recovery</p>
+            </div>
+          </button>
         </div>
 
         <AIInsights />
@@ -159,7 +175,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6">
           <div className="glass-card p-6">
             <h3 className="section-title mb-4">Complaint Status</h3>
             <div className="h-48">
@@ -217,6 +233,36 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          <div className="glass-card p-6">
+            <h3 className="section-title mb-4 flex items-center gap-2">
+              <Search className="w-4 h-4 text-secondary-500" />
+              Resident Skills Analytics
+            </h3>
+            {!skillAnalytics ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-5 h-5 border-2 border-secondary-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : skillAnalytics.categories.length === 0 ? (
+              <p className="text-sm text-surface-400 text-center py-4">No professionals registered yet</p>
+            ) : (
+              <div className="space-y-2">
+                {skillAnalytics.categories.slice(0, 8).map((cat: any) => (
+                  <div key={cat._id} className="flex items-center justify-between p-2 rounded-lg bg-surface-50 dark:bg-surface-800/50">
+                    <span className="text-sm">{cat._id}</span>
+                    <span className="text-sm font-semibold text-secondary-500">{cat.count}</span>
+                  </div>
+                ))}
+                {skillAnalytics.categories.length > 8 && (
+                  <p className="text-xs text-surface-400 text-center pt-1">+{skillAnalytics.categories.length - 8} more</p>
+                )}
+                <div className="pt-2 border-t border-surface-100 dark:border-surface-700/50 flex justify-between">
+                  <span className="text-xs font-medium">Total Professionals</span>
+                  <span className="text-xs font-bold">{skillAnalytics.totalProfessionals}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -225,6 +271,7 @@ export default function AdminDashboard() {
       {showUsers && <UserManagement onClose={() => setShowUsers(false)} />}
       {showPayments && <PaymentManagement onClose={() => setShowPayments(false)} />}
       {showDirectory && <UserDirectory onClose={() => setShowDirectory(false)} />}
+      {showRecovery && <RecoveryRequests onClose={() => setShowRecovery(false)} />}
     </DashboardLayout>
   );
 }

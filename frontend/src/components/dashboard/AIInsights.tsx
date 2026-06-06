@@ -39,7 +39,7 @@ export default function AIInsights() {
           <Brain className="w-4 h-4 text-primary-600 dark:text-primary-400" />
         </div>
         <div>
-          <h3 className="font-semibold text-sm">AI Insights & Recommendations</h3>
+          <h3 className="font-semibold text-sm">AI Insights & Smart Recommendations</h3>
           <p className="text-xs text-surface-400">Personalized suggestions based on current data</p>
         </div>
       </div>

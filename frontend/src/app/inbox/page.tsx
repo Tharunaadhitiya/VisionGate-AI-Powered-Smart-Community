@@ -1,12 +1,13 @@
 'use client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, Send, Search, Loader2, Mail, User, Shield, Home, Circle, MessageCircle, Info, ArrowLeft, MoreHorizontal, Phone, Clock, CheckCheck } from 'lucide-react';
+import { MessageSquare, Send, Search, Loader2, Mail, User, Shield, Home, Circle, MessageCircle, Info, ArrowLeft, MoreHorizontal, Phone, Clock, CheckCheck, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import { cn, formatTime } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 interface ChatUser {
   _id: string; name: string; email: string; role: string; flatNumber?: string; tower?: string;
@@ -230,55 +231,61 @@ export default function InboxPage() {
                   No conversations yet. Switch to &quot;All Users&quot; to start one.
                 </div>
               ) : (
-                conversations.filter((conv) => conv.lastMessage).map((conv) => {
-                  const other = otherParticipant(conv);
-                  if (!other) return null;
-                  const unread = conv.unreadCount || unreadCounts[other._id] || 0;
-                  const RoleIcon = roleIcon[other.role] || User;
-                  return (
-                    <motion.button key={conv._id} onClick={() => startChat(other)}
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        'w-full flex items-center gap-3 p-3 transition-colors text-left border-b border-surface-50/50 dark:border-surface-800/30',
-                        selectedUser?._id === other._id
-                          ? 'bg-primary-50 dark:bg-primary-500/10'
-                          : 'hover:bg-surface-50 dark:hover:bg-surface-800/50'
-                      )}>
-                      <div className="relative shrink-0">
-                        <div className="w-11 h-11 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                          {other.name.charAt(0)}
+                    conversations.filter((conv) => conv.lastMessage).map((conv) => {
+                      const other = otherParticipant(conv);
+                      if (!other) return null;
+                      const unread = conv.unreadCount || unreadCounts[other._id] || 0;
+                      const RoleIcon = roleIcon[other.role] || User;
+                      return (
+                        <div key={conv._id} className="relative group">
+                          <motion.button onClick={() => startChat(other)}
+                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                            className={cn(
+                              'w-full flex items-center gap-3 p-3 transition-colors text-left border-b border-surface-50/50 dark:border-surface-800/30',
+                              selectedUser?._id === other._id
+                                ? 'bg-primary-50 dark:bg-primary-500/10'
+                                : 'hover:bg-surface-50 dark:hover:bg-surface-800/50'
+                            )}>
+                            <div className="relative shrink-0">
+                              <div className="w-11 h-11 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                {other.name.charAt(0)}
+                              </div>
+                              <motion.span
+                                className={cn('absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white dark:border-surface-900 rounded-full',
+                                  isOnline(other._id) ? 'bg-secondary-500' : 'bg-surface-300')}
+                                animate={{ scale: isOnline(other._id) ? [1, 1.2, 1] : 1 }}
+                                transition={{ repeat: isOnline(other._id) ? Infinity : 0, duration: 2 }}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <p className="text-sm font-semibold truncate">{other.name}</p>
+                                  <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0', roleColors[other.role] || '')}>{other.role}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                  {unread > 0 && (
+                                    <span className="min-w-[16px] h-4 bg-primary-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                                      {unread > 9 ? '9+' : unread}
+                                    </span>
+                                  )}
+                                  <span className="text-[9px] text-surface-400 whitespace-nowrap">{formatConversationTime(conv.lastMessageAt)}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs mb-0.5">
+                                <Mail className="w-3 h-3 text-surface-400 shrink-0" />
+                                <span className="text-surface-500 truncate">{other.email}</span>
+                              </div>
+                              <p className="text-[11px] text-surface-400 truncate">{conv.lastMessage || 'Start chatting'}</p>
+                            </div>
+                          </motion.button>
+                          <button onClick={async (e) => { e.stopPropagation(); if (confirm('Delete this conversation?')) { try { await api.delete('/chat/conversations/' + conv._id); setConversations((prev) => prev.filter((c) => c._id !== conv._id)); if (selectedUser?._id === other._id) setSelectedUser(null); toast.success('Conversation deleted'); } catch { toast.error('Failed to delete'); } } }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-danger-50 dark:bg-danger-500/10 text-danger-500 hover:bg-danger-100 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete conversation">
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
-                        <motion.span
-                          className={cn('absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white dark:border-surface-900 rounded-full',
-                            isOnline(other._id) ? 'bg-secondary-500' : 'bg-surface-300')}
-                          animate={{ scale: isOnline(other._id) ? [1, 1.2, 1] : 1 }}
-                          transition={{ repeat: isOnline(other._id) ? Infinity : 0, duration: 2 }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-0.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <p className="text-sm font-semibold truncate">{other.name}</p>
-                            <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0', roleColors[other.role] || '')}>{other.role}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            {unread > 0 && (
-                              <span className="min-w-[16px] h-4 bg-primary-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
-                                {unread > 9 ? '9+' : unread}
-                              </span>
-                            )}
-                            <span className="text-[9px] text-surface-400 whitespace-nowrap">{formatConversationTime(conv.lastMessageAt)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs mb-0.5">
-                          <Mail className="w-3 h-3 text-surface-400 shrink-0" />
-                          <span className="text-surface-500 truncate">{other.email}</span>
-                        </div>
-                        <p className="text-[11px] text-surface-400 truncate">{conv.lastMessage || 'Start chatting'}</p>
-                      </div>
-                    </motion.button>
-                  );
-                })
+                      );
+                    })
               )
             ) : (
               <>

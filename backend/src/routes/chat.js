@@ -235,6 +235,23 @@ router.get('/unread-counts', authenticate, async (req, res) => {
   }
 });
 
+router.delete('/conversations/:id', authenticate, async (req, res) => {
+  try {
+    const convId = parseInt(req.params.id);
+    const userId = req.userId;
+    const pRows = await db.query('SELECT userId FROM conversation_participants WHERE conversationId = ?', [convId]);
+    const isParticipant = pRows.some(p => String(p.userId) === String(userId));
+    if (!isParticipant) return res.status(403).json({ success: false, message: 'Not a participant' });
+    await db.query('DELETE FROM messages WHERE conversationId = ?', [convId]);
+    await db.query('DELETE FROM conversation_participants WHERE conversationId = ?', [convId]);
+    await db.query('DELETE FROM conversations WHERE id = ?', [convId]);
+    res.json({ success: true, message: 'Conversation deleted' });
+  } catch (error) {
+    logger.error('Delete conversation error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete conversation' });
+  }
+});
+
 router.get('/unread-count', authenticate, async (req, res) => {
   try {
     const rows = await db.query('SELECT COUNT(*) AS count FROM messages WHERE receiverId = ? AND isRead = false', [req.userId]);

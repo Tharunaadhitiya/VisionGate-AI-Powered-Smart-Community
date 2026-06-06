@@ -14,6 +14,11 @@ interface User {
   isActive: boolean;
   isVerified?: boolean;
   profileImage?: string;
+  skills?: string | string[];
+  profession?: string;
+  experience_years?: string;
+  availability?: string;
+  skill_visibility?: string;
   createdAt?: string;
   updatedAt?: string;
   lastLogin?: string;

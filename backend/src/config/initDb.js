@@ -3,6 +3,7 @@ const config = require('./index');
 const logger = require('../utils/logger');
 const path = require('path');
 const fs = require('fs');
+const createPushTables = require('./initPush');
 
 const initDatabase = async () => {
   let connection;
@@ -35,6 +36,7 @@ const initDatabase = async () => {
       logger.info('Database schema initialized');
     }
 
+    await createPushTables();
     logger.info(`Database "${config.mysql.database}" ready`);
     return true;
   } catch (error) {

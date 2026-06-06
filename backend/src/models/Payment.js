@@ -2,7 +2,7 @@ const { db, buildWhere, buildOrder, aliasRow, aliasRows } = require('./dbHelpers
 const User = require('./User');
 
 const TABLE = 'payments';
-const COLS = 'id AS _id, senderId, recipientId, amount, type, description, status, dueDate, paidAt, paymentMethod, transactionId, createdBy, createdAt, updatedAt';
+const COLS = 'id AS _id, senderId, recipientId, amount, type, title, description, status, dueDate, paidAt, paymentMethod, transactionId, createdBy, createdAt, updatedAt, sentReminderDay2, sentReminderDay3, sentReminderDay4, sentReminderDaily, sentOverdue';
 
 async function populate(p) {
   if (!p) return p;

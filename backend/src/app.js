@@ -27,6 +27,12 @@ const pollRoutes = require('./routes/polls');
 const incidentRoutes = require('./routes/incidents');
 const searchRoutes = require('./routes/search');
 const houseRoutes = require('./routes/houses');
+const recoveryRoutes = require('./routes/recovery');
+const packageRoutes = require('./routes/packages');
+const lostFoundRoutes = require('./routes/lostFound');
+const skillRoutes = require('./routes/skills');
+const pushRoutes = require('./routes/push');
+const rentRoutes = require('./routes/rent');
 
 const app = express();
 
@@ -60,6 +66,12 @@ app.use('/api/polls', pollRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/houses', houseRoutes);
+app.use('/api/recovery-requests', recoveryRoutes);
+app.use('/api/packages', packageRoutes);
+app.use('/api/lost-found', lostFoundRoutes);
+app.use('/api/skills', skillRoutes);
+app.use('/api/push', pushRoutes);
+app.use('/api/rent', rentRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'VisionGate API is running', timestamp: new Date().toISOString() });

@@ -1,6 +1,9 @@
 const express = require('express');
 const { body } = require('express-validator');
 const User = require('../models/User');
+const Alert = require('../models/Alert');
+const UserNotification = require('../models/UserNotification');
+const AuditLog = require('../models/AuditLog');
 const { authenticate, authorize } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { paginateResults } = require('../utils/helpers');
@@ -21,9 +24,11 @@ router.get('/', authenticate, async (req, res) => {
     if (role) filter.role = role;
 
     let userList = await User.find(filter, { sort: { createdAt: -1 }, skip, limit: pageLimit });
-    if (req.user.role !== 'admin') {
-      userList = userList.map(({ password, ...rest }) => rest);
-    }
+    userList = userList.map((u) => {
+      if (req.user.role !== 'admin') { const { password, ...rest } = u; u = rest; }
+      if (u.skills && typeof u.skills === 'string') { try { u.skills = JSON.parse(u.skills); } catch { u.skills = []; } }
+      return u;
+    });
 
     const total = await User.countDocuments(filter);
 
@@ -41,6 +46,7 @@ router.get('/:id', authenticate, async (req, res) => {
     }
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.skills && typeof user.skills === 'string') { try { user.skills = JSON.parse(user.skills); } catch { user.skills = []; } }
     res.json({ success: true, data: { user } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to fetch user' });
@@ -52,13 +58,16 @@ router.put('/:id', authenticate, async (req, res) => {
     if (req.user.role !== 'admin' && req.userId.toString() !== req.params.id) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
-    const allowedFields = ['name', 'phone', 'flatNumber', 'tower', 'preferences', 'profileImage'];
+    const allowedFields = ['name', 'phone', 'flatNumber', 'tower', 'preferences', 'profileImage', 'profession', 'skills', 'experience_years', 'availability', 'skill_visibility'];
     const updates = {};
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
 
     const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true });
+    if (user && user.skills && typeof user.skills === 'string') {
+      try { user.skills = JSON.parse(user.skills); } catch { user.skills = []; }
+    }
     res.json({ success: true, message: 'Profile updated', data: { user } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to update profile' });
@@ -235,10 +244,8 @@ router.put('/:id/promote-admin', authenticate, authorize('admin'), async (req, r
 
     const updated = await User.findByIdAndUpdate(req.params.id, { role: 'admin' }, { new: true });
 
-    const Alert = require('../models/Alert');
-    const UserNotification = require('../models/UserNotification');
     const alert = await Alert.create({
-      type: 'system',
+      type: 'general',
       severity: 'high',
       title: 'Role Updated',
       message: `You have been promoted to Administrator by ${req.user.name}.`,
@@ -262,7 +269,103 @@ router.put('/:id/promote-admin', authenticate, authorize('admin'), async (req, r
     res.json({ success: true, message: 'User promoted to admin', data: { user: updated } });
   } catch (error) {
     logger.error('Promote admin error:', error);
+    if (error.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' || error.code === 'ER_WARN_DATA_OUT_OF_RANGE') {
+      return res.status(500).json({ success: false, message: 'Invalid data format.' });
+    }
     res.status(500).json({ success: false, message: 'Failed to promote user' });
+  }
+});
+
+router.put('/:id/reset-credentials', authenticate, authorize('admin'), [
+  body('email').optional().isEmail().normalizeEmail(),
+  body('password').optional().isLength({ min: 6 }),
+], validate, async (req, res) => {
+  try {
+    console.log("Admin Reset Request:", req.body);
+    console.log("User ID:", req.params.id);
+
+    if (req.userId.toString() === req.params.id) {
+      return res.status(400).json({ success: false, message: 'Use change password to update your own credentials' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const updates = {};
+    if (req.body.email && req.body.email !== user.email) {
+      const existing = await User.findOne({ email: req.body.email });
+      if (existing) return res.status(400).json({ success: false, message: 'Email already in use' });
+      updates.email = req.body.email;
+    }
+    if (req.body.password) {
+      const bcrypt = require('bcryptjs');
+      updates.password = await bcrypt.hash(req.body.password, 12);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: 'No changes provided' });
+    }
+
+    console.log("Update Result:", updates);
+
+    const setClauses = []; const setParams = [];
+    for (const [k, v] of Object.entries(updates)) { setClauses.push(`\`${k}\` = ?`); setParams.push(v); }
+    setParams.push(req.params.id);
+    await require('../models/dbHelpers').db.query(`UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`, setParams);
+
+    const alert = await Alert.create({
+      type: 'general',
+      severity: 'high',
+      title: 'Account Credentials Updated',
+      message: 'Your login credentials have been updated by the administrator. Please use your new credentials to log in.',
+      createdBy: req.userId,
+      broadcastTo: [],
+    });
+    await UserNotification.create({
+      userId: parseInt(req.params.id),
+      alertId: alert._id,
+      read: false,
+      deleted: false,
+    });
+
+    await AuditLog.create({
+      userId: req.userId,
+      action: 'reset_credentials',
+      resource: 'users',
+      resourceId: req.params.id,
+      details: JSON.stringify({ changedFields: Object.keys(updates) }),
+      status: 'success',
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${req.params.id}`).emit('notification:received', {
+        type: 'credential_update',
+        title: 'Account Credentials Updated',
+        message: 'Your login credentials have been updated by the administrator. Please use your new credentials to log in.',
+      });
+    }
+
+    logger.info(`Admin #${req.userId} updated credentials for user #${req.params.id}`);
+    res.json({ success: true, message: 'Credentials updated successfully' });
+  } catch (error) {
+    logger.error('Reset credentials error:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, message: 'Email already in use.' });
+    }
+    if (error.code === 'ER_BAD_FIELD_ERROR') {
+      return res.status(500).json({ success: false, message: 'Database update failed.' });
+    }
+    if (error.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' || error.code === 'ER_WARN_DATA_OUT_OF_RANGE') {
+      return res.status(500).json({ success: false, message: 'Invalid data format.' });
+    }
+    if (error.code?.startsWith('ER_PARSE') || error.message?.includes('validation')) {
+      return res.status(400).json({ success: false, message: 'Invalid email format.' });
+    }
+    res.status(500).json({ success: false, message: 'Network error. Please try again.' });
   }
 });
 

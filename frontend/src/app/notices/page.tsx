@@ -38,14 +38,14 @@ export default function NoticesPage() {
       const params: any = {};
       if (filter) params.category = filter;
       const res = await api.get('/notices', params);
-      setNotices(res.data?.data?.notices || []);
+      setNotices(res.data?.notices || []);
     } catch {}
   };
 
   const fetchPolls = async () => {
     try {
       const res = await api.get('/polls');
-      setPolls(res.data?.data?.polls || []);
+      setPolls(res.data?.polls || []);
     } catch {}
   };
 

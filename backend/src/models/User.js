@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const { db, buildWhere, buildOrder, aliasRow, aliasRows } = require('./dbHelpers');
 
 const TABLE = 'users';
-const COLS = 'id AS _id, name, email, phone, role, flatNumber, tower, houseCode, isVerified, isActive, profileImage, fcmToken, deletedAt, reactivationRequested, reactivationReason, preferences, lastLogin, deviceInfo, createdAt, updatedAt';
+const COLS = 'id AS _id, name, email, phone, role, flatNumber, tower, houseCode, isVerified, isActive, profileImage, fcmToken, deletedAt, reactivationRequested, reactivationReason, preferences, lastLogin, deviceInfo, createdAt, updatedAt, profession, skills, experience_years, availability, skill_visibility';
 
 const User = {
   async findById(id) { const rows = await db.query(`SELECT ${COLS} FROM ${TABLE} WHERE id = ?`, [id]); return aliasRow(rows[0]); },
@@ -46,6 +46,7 @@ const User = {
     if (rest.password) rest.password = await bcrypt.hash(rest.password, 12);
     if (rest.preferences && typeof rest.preferences === 'object') rest.preferences = JSON.stringify(rest.preferences);
     if (rest.deviceInfo && typeof rest.deviceInfo === 'object') rest.deviceInfo = JSON.stringify(rest.deviceInfo);
+    if (rest.skills && Array.isArray(rest.skills)) rest.skills = JSON.stringify(rest.skills);
     const cols = []; const vals = []; const phs = [];
     for (const [k, v] of Object.entries(rest)) { if (v !== undefined) { cols.push(`\`${k}\``); vals.push(v); phs.push('?'); } }
     const result = await db.query(`INSERT INTO ${TABLE} (${cols.join(',')}) VALUES (${phs.join(',')})`, vals);
@@ -55,6 +56,7 @@ const User = {
     const { $unset, ...setData } = updates;
     if ($unset) { for (const k of Object.keys($unset)) { await db.query(`UPDATE ${TABLE} SET \`${k}\` = NULL WHERE id = ?`, [id]); } }
     if (setData.preferences && typeof setData.preferences === 'object') setData.preferences = JSON.stringify(setData.preferences);
+    if (setData.skills && Array.isArray(setData.skills)) setData.skills = JSON.stringify(setData.skills);
     const setClauses = []; const params = [];
     for (const [k, v] of Object.entries(setData)) { if (v !== undefined) { setClauses.push(`\`${k}\` = ?`); params.push(v); } }
     if (setClauses.length) { params.push(id); await db.query(`UPDATE ${TABLE} SET ${setClauses.join(',')} WHERE id = ?`, params); }
@@ -62,12 +64,23 @@ const User = {
   },
   async updateMany(conditions, data) { const { sql, params } = buildWhere(conditions); const sc = Object.entries(data).filter(([, v]) => v !== undefined).map(([k]) => `\`${k}\` = ?`); const sv = Object.entries(data).filter(([, v]) => v !== undefined).map(([, v]) => v); if (sc.length) await db.query(`UPDATE ${TABLE} SET ${sc.join(',')} WHERE ${sql}`, [...sv, ...params]); },
   async distinct(field) { const rows = await db.query(`SELECT DISTINCT \`${field}\` FROM ${TABLE} WHERE \`${field}\` IS NOT NULL`); return rows.map(r => r[field]); },
+  async searchByProfession(keyword) {
+    const like = `%${keyword}%`;
+    const q = `SELECT ${COLS} FROM ${TABLE} WHERE role = 'resident' AND skill_visibility IN ('public', 'community_only') AND (profession LIKE ? OR skills LIKE ?) ORDER BY profession ASC`;
+    const rows = await db.query(q, [like, like]);
+    return aliasRows(rows);
+  },
+  async getProfessionAnalytics() {
+    const rows = await db.query(`SELECT profession AS _id, COUNT(*) AS count FROM ${TABLE} WHERE role = 'resident' AND profession IS NOT NULL AND skill_visibility != 'private' GROUP BY profession ORDER BY count DESC`);
+    return rows;
+  },
   async save(user) {
     if (user._id || user.id) {
       const id = user._id || user.id;
       const { _id, id: _id2, comparePassword, toJSON, ...data } = user;
       if (data.password) data.password = await bcrypt.hash(data.password, 12);
       if (data.preferences && typeof data.preferences === 'object') data.preferences = JSON.stringify(data.preferences);
+      if (data.skills && Array.isArray(data.skills)) data.skills = JSON.stringify(data.skills);
       const sc = Object.entries(data).filter(([, v]) => v !== undefined).map(([k]) => `\`${k}\` = ?`);
       const sv = Object.entries(data).filter(([, v]) => v !== undefined).map(([, v]) => v);
       if (sc.length) { sv.push(id); await db.query(`UPDATE ${TABLE} SET ${sc.join(',')} WHERE id = ?`, sv); }

@@ -2,23 +2,18 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Camera, Activity, AlertTriangle, Shield, Eye } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import SurveillancePanel from '@/components/surveillance/SurveillancePanel';
 
 export default function SurveillancePage() {
-  const [cameras, setCameras] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      api.get('/surveillance/cameras'),
-      api.get('/surveillance/events?limit=20'),
-    ]).then(([c, e]) => {
-      setCameras(c.data.cameras || []);
-      setEvents(e.data.events || []);
-    }).finally(() => setLoading(false));
+    api.get('/surveillance/events?limit=20')
+      .then((e) => setEvents(e.data.events || []))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -29,26 +24,11 @@ export default function SurveillancePage() {
           <p className="text-surface-400 text-sm">Real-time CCTV monitoring with AI-powered detection</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {cameras.map((cam) => (
-            <div key={cam.id} className={cn('glass-card p-4 transition-all', cam.status === 'active' ? 'border-l-2 border-l-secondary-500' : 'opacity-60')}>
-              <div className="flex items-center justify-between mb-2">
-                <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', cam.status === 'active' ? 'bg-secondary-100 dark:bg-secondary-500/20 text-secondary-700 dark:text-secondary-400' : 'bg-surface-100 dark:bg-surface-800 text-surface-400')}>
-                  {cam.status}
-                </span>
-                <Camera className="w-4 h-4 text-surface-400" />
-              </div>
-              <p className="font-medium text-sm">{cam.name}</p>
-              <p className="text-xs text-surface-400">{cam.location}</p>
-            </div>
-          ))}
-        </div>
-
         <SurveillancePanel />
 
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="section-title">AI Detection Events</h3>
+            <h3 className="section-title">Historical AI Detection Events</h3>
             <span className="text-xs text-surface-400">{events.length} events</span>
           </div>
           {events.length === 0 ? (

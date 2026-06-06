@@ -25,14 +25,15 @@ export default function VisitorsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', purpose: 'personal', vehicleNumber: '', vehicleType: 'car', idProof: '' });
-  const [selectedHouse, setSelectedHouse] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [towers, setTowers] = useState<string[]>([]);
   const [selectedTower, setSelectedTower] = useState('');
   const [flats, setFlats] = useState<any[]>([]);
   const [selectedFlat, setSelectedFlat] = useState<any | null>(null);
+  const [residentDetails, setResidentDetails] = useState<any | null>(null);
   const [loadingFlats, setLoadingFlats] = useState(false);
+  const [loadingResident, setLoadingResident] = useState(false);
 
   const [summary, setSummary] = useState<any>(null);
 
@@ -41,14 +42,14 @@ export default function VisitorsPage() {
       const params: any = { limit: '50' };
       if (filter) params.status = filter;
       const res = await api.get('/visitors', params);
-      setVisitors(res.data?.data?.visitors || []);
+      setVisitors(res.data?.visitors || []);
     } catch {} finally { setLoading(false); }
   };
 
   const fetchSummary = async () => {
     try {
       const res = await api.get('/visitors/summary');
-      setSummary(res.data?.data || null);
+      setSummary(res.data || null);
     } catch {}
   };
 
@@ -59,18 +60,34 @@ export default function VisitorsPage() {
 
   const fetchTowers = async () => {
     try {
-      const res = await api.get('/houses/towers');
-      setTowers(res.data?.data?.towers || []);
-    } catch {}
+      const res = await api.get('/visitors/towers');
+      const towerArr = res.data?.towers?.map((t: any) => t.tower) || [];
+      console.log('Towers API Response:', towerArr);
+      setTowers(towerArr);
+    } catch (err) { console.error('Failed to load towers:', err); }
   };
 
   const fetchFlats = async (tower: string) => {
     setLoadingFlats(true);
     setSelectedFlat(null);
+    setResidentDetails(null);
     try {
-      const res = await api.get('/houses/flats', { tower });
-      setFlats(res.data?.data?.flats || []);
-    } catch {} finally { setLoadingFlats(false); }
+      const res = await api.get(`/visitors/flats/${tower}`);
+      const flatArr = res.data?.flats || [];
+      console.log('Flats API Response:', flatArr);
+      console.log('Selected Tower:', tower);
+      setFlats(flatArr);
+    } catch (err) { console.error('Failed to load flats:', err); } finally { setLoadingFlats(false); }
+  };
+
+  const fetchResidentDetails = async (houseCode: string) => {
+    setLoadingResident(true);
+    try {
+      const res = await api.get(`/visitors/resident/${houseCode}`);
+      const rd = res.data?.resident;
+      console.log('Resident Details:', rd);
+      setResidentDetails(rd);
+    } catch (err) { console.error('Failed to load resident details:', err); setResidentDetails(null); } finally { setLoadingResident(false); }
   };
 
   useEffect(() => {
@@ -79,33 +96,36 @@ export default function VisitorsPage() {
     setSelectedTower('');
     setFlats([]);
     setSelectedFlat(null);
-    setSelectedHouse(null);
+    setResidentDetails(null);
   }, [showForm]);
 
   useEffect(() => {
-    if (!selectedTower) { setFlats([]); setSelectedFlat(null); setSelectedHouse(null); return; }
+    if (!selectedTower) { setFlats([]); setSelectedFlat(null); setResidentDetails(null); return; }
     fetchFlats(selectedTower);
   }, [selectedTower]);
 
   const selectFlat = (flat: any) => {
+    console.log('Selected Flat:', flat);
     setSelectedFlat(flat);
-    setSelectedHouse(flat);
+    if (flat.house_code) {
+      fetchResidentDetails(flat.house_code);
+    }
   };
 
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.phone.trim()) { toast.error('Visitor name and phone are required'); return; }
-    if (!selectedHouse) { toast.error('Please select a flat'); return; }
-    if (!selectedHouse.residentId) { toast.error('Selected flat has no resident assigned'); return; }
+    if (!selectedFlat) { toast.error('Please select a flat'); return; }
+    if (!selectedFlat.resident_id) { toast.error('Selected flat has no resident assigned'); return; }
     setSubmitting(true);
     try {
-      const res = await api.post('/visitors', { ...form, houseId: selectedHouse._id });
+      const res = await api.post('/visitors', { ...form, houseId: selectedFlat.id });
       toast.success(res.message || 'Entry request sent');
       setShowForm(false);
       setForm({ name: '', phone: '', purpose: 'personal', vehicleNumber: '', vehicleType: 'car', idProof: '' });
-      setSelectedHouse(null);
       setSelectedTower('');
       setFlats([]);
       setSelectedFlat(null);
+      setResidentDetails(null);
       fetchVisitors();
     } catch (err: any) { toast.error(err.message || 'Failed to send request'); } finally { setSubmitting(false); }
   };
@@ -277,8 +297,8 @@ export default function VisitorsPage() {
 
               {/* Step 1: Select Tower */}
               <div>
-                <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Building2 className="w-3 h-3" /> Step 1: Select Tower
+                <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Building2 className="w-3 h-3 text-surface-500" /> Step 1: Select Tower
                 </h4>
                 <select className="input-field" value={selectedTower} onChange={(e) => setSelectedTower(e.target.value)}>
                   <option value="">-- Select Tower --</option>
@@ -294,28 +314,28 @@ export default function VisitorsPage() {
               {/* Step 2: Select Flat */}
               {selectedTower && (
                 <div>
-                  <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Home className="w-3 h-3" /> Step 2: Select Flat — Tower {selectedTower}
+                  <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Home className="w-3 h-3 text-surface-500" /> Step 2: Select Flat — Tower {selectedTower}
                   </h4>
                   {loadingFlats ? (
                     <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-primary-500" /></div>
                   ) : flats.length === 0 ? (
-                    <p className="text-sm text-surface-400 text-center py-3">No occupied flats in Tower {selectedTower}.</p>
+                    <p className="text-sm text-surface-500 dark:text-surface-400 text-center py-3">No occupied flats in Tower {selectedTower}.</p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
                       {flats.map((f) => (
                         <button
-                          key={f._id}
+                          key={f.id || f.house_code}
                           onClick={() => selectFlat(f)}
                           className={cn(
                             'p-3 rounded-xl text-center transition-all border-2',
-                            selectedFlat?._id === f._id
+                            selectedFlat?.id === f.id
                               ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10 shadow-md'
                               : 'border-surface-200 dark:border-surface-700 hover:border-primary-300 bg-white dark:bg-surface-800'
                           )}
                         >
-                          <p className="font-bold text-base">{f.tower}-{f.flatNumber}</p>
-                          <p className="text-[10px] text-surface-400 mt-0.5 truncate">{f.residentName}</p>
+                          <p className="font-bold text-base text-surface-900 dark:text-surface-100">{f.house_code}</p>
+                          <p className="text-[10px] text-surface-500 dark:text-surface-400 mt-0.5 truncate">Flat {f.flat_number}</p>
                         </button>
                       ))}
                     </div>
@@ -326,44 +346,52 @@ export default function VisitorsPage() {
               {/* Step 3: Resident Details */}
               {selectedFlat && (
                 <div>
-                  <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <User className="w-3 h-3" /> Resident Information
+                  <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <User className="w-3 h-3 text-surface-500" /> Resident Information
                   </h4>
-                  <div className="p-3 rounded-xl bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/20 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-surface-700 dark:text-surface-200">
-                        {selectedFlat.residentName}
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                        Online
-                      </span>
+                  {loadingResident ? (
+                    <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-primary-500" /></div>
+                  ) : residentDetails ? (
+                    <div className="p-3 rounded-xl bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-surface-700 dark:text-surface-200">
+                          {residentDetails.name}
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                          Online
+                        </span>
+                      </div>
+                      <div className="text-xs text-surface-500 space-y-1">
+                        <p><span className="font-medium text-surface-600 dark:text-surface-300">House:</span> {residentDetails.house_code}</p>
+                        <p><span className="font-medium text-surface-600 dark:text-surface-300">Tower:</span> {residentDetails.tower}</p>
+                        <p><span className="font-medium text-surface-600 dark:text-surface-300">Flat:</span> {residentDetails.flat_number}</p>
+                        <p><span className="font-medium text-surface-600 dark:text-surface-300">Phone:</span> {residentDetails.phone || '—'}</p>
+                        <p><span className="font-medium text-surface-600 dark:text-surface-300">Email:</span> {residentDetails.email || '—'}</p>
+                      </div>
                     </div>
-                    <div className="text-xs text-surface-500 space-y-1">
-                      <p><span className="font-medium text-surface-600 dark:text-surface-300">House:</span> {selectedFlat.tower}-{selectedFlat.flatNumber}</p>
-                      <p><span className="font-medium text-surface-600 dark:text-surface-300">Phone:</span> {selectedFlat.residentPhone || '—'}</p>
-                      <p><span className="font-medium text-surface-600 dark:text-surface-300">Email:</span> {selectedFlat.residentEmail || '—'}</p>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-surface-400 text-center py-3">Unable to load resident details.</p>
+                  )}
                 </div>
               )}
 
               {/* Step 4: Visitor Information */}
               <div>
-                <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <User className="w-3 h-3" /> Visitor Details
+                <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <User className="w-3 h-3 text-surface-500" /> Visitor Details
                 </h4>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Visitor Name</label>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-1">Visitor Name</label>
                     <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Mobile Number</label>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-1">Mobile Number</label>
                     <input className="input-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Purpose of Visit</label>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-1">Purpose of Visit</label>
                     <select className="input-field" value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })}>
                       {['personal', 'delivery', 'service', 'emergency', 'other'].map((p) => (<option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>))}
                     </select>
@@ -373,16 +401,16 @@ export default function VisitorsPage() {
 
               {/* Step 5: Vehicle Information */}
               <div>
-                <h4 className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Car className="w-3 h-3" /> Vehicle Details
+                <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Car className="w-3 h-3 text-surface-500" /> Vehicle Details
                 </h4>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Vehicle Number <span className="text-surface-400 font-normal">(optional)</span></label>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-1">Vehicle Number <span className="text-surface-400 font-normal">(optional)</span></label>
                     <input className="input-field" value={form.vehicleNumber} onChange={(e) => setForm({ ...form, vehicleNumber: e.target.value })} placeholder="e.g. TN09AB1234" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Vehicle Type</label>
+                    <label className="block text-sm font-medium text-surface-700 dark:text-surface-200 mb-1">Vehicle Type</label>
                     <select className="input-field" value={form.vehicleType} onChange={(e) => setForm({ ...form, vehicleType: e.target.value })}>
                       {[
                         { value: 'car', label: 'Car' },

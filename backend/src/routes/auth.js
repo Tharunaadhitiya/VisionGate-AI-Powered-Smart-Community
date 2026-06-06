@@ -90,8 +90,9 @@ router.post('/login', [
       data: { user, token },
     });
   } catch (error) {
-    logger.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Login failed' });
+    logger.error('Login error:', error.code, error.message);
+    console.error('Login error details:', { code: error.code, sqlMessage: error.sqlMessage, sqlState: error.sqlState });
+    res.status(500).json({ success: false, message: `Login failed (${error.code || 'unknown'})` });
   }
 });
 

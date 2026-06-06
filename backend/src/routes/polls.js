@@ -5,6 +5,7 @@ const PollVote = require('../models/PollVote');
 const { authenticate, authorize } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const logger = require('../utils/logger');
+const { notifyRole } = require('../services/notificationHelper');
 
 const router = express.Router();
 
@@ -44,6 +45,8 @@ router.post('/', authenticate, authorize('admin'), [
       allowMultipleVotes: req.body.allowMultipleVotes || false,
       createdBy: req.userId,
     });
+    const io = req.app.get('io');
+    await notifyRole(io, 'resident', { type: 'new_poll', title: 'New Poll: ' + req.body.title, body: req.body.description || 'A new poll is available for voting.', data: { severity: 'info', pollId: poll._id?.toString() } });
     res.status(201).json({ success: true, message: 'Poll created', data: { poll } });
   } catch (error) {
     logger.error('Create poll error:', error);

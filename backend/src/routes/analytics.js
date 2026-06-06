@@ -84,7 +84,10 @@ router.get('/resident/:id', authenticate, async (req, res) => {
     const complaintsRows = await db.query('SELECT COUNT(*) AS count FROM complaints WHERE residentId = ?', [userId]);
     const maintenanceRows = await db.query('SELECT COUNT(*) AS count FROM maintenance_records WHERE residentId = ?', [userId]);
     const pendingComplaintsRows = await db.query("SELECT COUNT(*) AS count FROM complaints WHERE residentId = ? AND status IN ('submitted','in_progress')", [userId]);
-    const pendingMaintenanceRows = await db.query("SELECT COUNT(*) AS count FROM maintenance_records WHERE residentId = ? AND status = 'pending'", [userId]);
+    const pendingMaintRows = await db.query("SELECT COALESCE(SUM(amount), 0) AS total FROM maintenance_records WHERE residentId = ? AND status = 'pending'", [userId]);
+    const pendingPaymentRows = await db.query("SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE recipientId = ? AND status = 'pending'", [userId]);
+
+    const totalPendingAmount = (pendingMaintRows[0]?.total || 0) + (pendingPaymentRows[0]?.total || 0);
 
     res.json({
       success: true,
@@ -94,7 +97,8 @@ router.get('/resident/:id', authenticate, async (req, res) => {
         maintenance: maintenanceRows[0]?.count || 0,
         alerts: 0,
         pendingComplaints: pendingComplaintsRows[0]?.count || 0,
-        pendingMaintenance: pendingMaintenanceRows[0]?.count || 0,
+        pendingMaintenance: totalPendingAmount,
+        pendingMaintenanceAmount: totalPendingAmount,
       },
     });
   } catch (error) {

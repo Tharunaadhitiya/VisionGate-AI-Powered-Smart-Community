@@ -25,11 +25,18 @@ CREATE TABLE IF NOT EXISTS users (
   preferences JSON,
   lastLogin DATETIME NULL,
   deviceInfo JSON,
+  profession VARCHAR(100),
+  skills TEXT,
+  experience_years VARCHAR(50),
+  availability VARCHAR(100),
+  skill_visibility ENUM('public','community_only','private') DEFAULT 'private',
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_role (role),
   INDEX idx_isActive (isActive),
-  INDEX idx_email (email)
+  INDEX idx_email (email),
+  INDEX idx_profession (profession),
+  INDEX idx_skill_visibility (skill_visibility)
 ) ENGINE=InnoDB;
 
 -- Visitors
@@ -206,7 +213,8 @@ CREATE TABLE IF NOT EXISTS payments (
   senderId INT,
   recipientId INT NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
-  type ENUM('rent','maintenance','penalty','fine','other') NOT NULL,
+  type ENUM('maintenance_fee','house_rent','fine','security_deposit','parking_fee','water_charge','electricity_charge','other') NOT NULL DEFAULT 'other',
+  title VARCHAR(255) NOT NULL DEFAULT '',
   description TEXT,
   status ENUM('pending','paid','overdue','cancelled') DEFAULT 'pending',
   dueDate DATE NOT NULL,
@@ -222,6 +230,9 @@ CREATE TABLE IF NOT EXISTS payments (
   INDEX idx_recipient_status (recipientId, status),
   INDEX idx_sender_status (senderId, status)
 ) ENGINE=InnoDB;
+
+ALTER TABLE payments ADD COLUMN title VARCHAR(255) NOT NULL DEFAULT '';
+ALTER TABLE payments MODIFY COLUMN type ENUM('maintenance_fee','house_rent','fine','security_deposit','parking_fee','water_charge','electricity_charge','other') NOT NULL DEFAULT 'other';
 
 -- Conversations
 CREATE TABLE IF NOT EXISTS conversations (
@@ -447,6 +458,183 @@ CREATE TABLE IF NOT EXISTS incidents (
   INDEX idx_reporter (reportedBy)
 ) ENGINE=InnoDB;
 
+-- Account Recovery
+CREATE TABLE IF NOT EXISTS account_recovery (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  userId INT,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  reason TEXT NOT NULL,
+  status ENUM('pending','resolved','rejected') DEFAULT 'pending',
+  adminNote TEXT,
+  resolvedBy INT,
+  resolvedAt DATETIME,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (resolvedBy) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_email (email),
+  INDEX idx_created (createdAt)
+) ENGINE=InnoDB;
+
 ALTER TABLE incidents MODIFY COLUMN mediaUrl LONGTEXT;
 ALTER TABLE visitors ADD COLUMN vehicleType VARCHAR(50) DEFAULT 'car';
+RENAME TABLE IF EXISTS rent_configs TO rent_configurations;
+ALTER TABLE rent_configurations CHANGE COLUMN residentId user_id INT;
+ALTER TABLE rent_configurations CHANGE COLUMN amount monthly_rent DECIMAL(10,2);
+ALTER TABLE rent_configurations CHANGE COLUMN dueDay due_day INT;
+ALTER TABLE rent_configurations CHANGE COLUMN lateFee late_fee DECIMAL(10,2);
+ALTER TABLE rent_configurations CHANGE COLUMN startDate start_date DATE;
+ALTER TABLE rent_configurations CHANGE COLUMN isActive is_active BOOLEAN;
+ALTER TABLE rent_configurations CHANGE COLUMN createdBy created_by INT;
+ALTER TABLE rent_configurations CHANGE COLUMN createdAt created_at DATETIME;
+ALTER TABLE rent_configurations DROP COLUMN updatedAt;
 ALTER TABLE users ADD COLUMN houseCode VARCHAR(50) AFTER tower;
+
+-- Recovery Requests (v2)
+CREATE TABLE IF NOT EXISTS recovery_requests (
+  request_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone_number VARCHAR(50) NOT NULL,
+  reason TEXT NOT NULL,
+  status ENUM('Pending','Approved','Rejected','Resolved') DEFAULT 'Pending',
+  admin_note TEXT,
+  handled_by INT,
+  handled_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (handled_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_email (email),
+  INDEX idx_created (created_at)
+) ENGINE=InnoDB;
+
+-- Packages / Parcel Delivery
+CREATE TABLE IF NOT EXISTS packages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  courier VARCHAR(255) NOT NULL,
+  packageType VARCHAR(100) NOT NULL,
+  residentName VARCHAR(255) NOT NULL,
+  tower CHAR(1) NOT NULL,
+  flatNumber VARCHAR(50) NOT NULL,
+  trackingNumber VARCHAR(255) DEFAULT '',
+  remarks TEXT,
+  status ENUM('received','ready','collected') DEFAULT 'received',
+  residentId INT,
+  collectedAt DATETIME NULL,
+  collectedBy INT,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (residentId) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (collectedBy) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_tower (tower),
+  INDEX idx_resident (residentId),
+  INDEX idx_created (createdAt)
+) ENGINE=InnoDB;
+
+-- Lost & Found Items
+CREATE TABLE IF NOT EXISTS lost_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  itemName VARCHAR(255) NOT NULL,
+  description TEXT,
+  location VARCHAR(255),
+  dateLost DATE,
+  imageUrl TEXT,
+  color VARCHAR(100),
+  brand VARCHAR(255),
+  status ENUM('open','matched','closed') DEFAULT 'open',
+  reportedBy INT NOT NULL,
+  matchedItemId INT,
+  matchScore DECIMAL(5,2),
+  resolvedAt DATETIME,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (reportedBy) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (matchedItemId) REFERENCES found_items(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_reportedBy (reportedBy),
+  INDEX idx_dateLost (dateLost)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS found_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  itemName VARCHAR(255) NOT NULL,
+  description TEXT,
+  foundLocation VARCHAR(255),
+  imageUrl TEXT,
+  color VARCHAR(100),
+  brand VARCHAR(255),
+  status ENUM('open','matched','returned') DEFAULT 'open',
+  reportedBy INT NOT NULL,
+  matchedItemId INT,
+  matchScore DECIMAL(5,2),
+  returnedAt DATETIME,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (reportedBy) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (matchedItemId) REFERENCES lost_items(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_reportedBy (reportedBy)
+) ENGINE=InnoDB;
+
+-- Rent Configuration
+CREATE TABLE IF NOT EXISTS rent_configurations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL UNIQUE,
+  monthly_rent DECIMAL(10,2) NOT NULL,
+  due_day INT NOT NULL DEFAULT 5,
+  late_fee DECIMAL(10,2) DEFAULT 0,
+  start_date DATE NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_by INT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_active (is_active)
+) ENGINE=InnoDB;
+
+-- Rent Invoices (auto-generated monthly)
+CREATE TABLE IF NOT EXISTS rent_invoices (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  configId INT NOT NULL,
+  residentId INT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  lateFee DECIMAL(10,2) DEFAULT 0,
+  dueDate DATE NOT NULL,
+  periodMonth VARCHAR(7) NOT NULL,
+  status ENUM('pending','paid','overdue','cancelled') DEFAULT 'pending',
+  paidAt DATETIME,
+  paymentId INT,
+  sentReminderDay2 BOOLEAN DEFAULT false,
+  sentReminderDay3 BOOLEAN DEFAULT false,
+  sentReminderDay5 BOOLEAN DEFAULT false,
+  sentOverdue BOOLEAN DEFAULT false,
+  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (configId) REFERENCES rent_configurations(id) ON DELETE CASCADE,
+  FOREIGN KEY (residentId) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (paymentId) REFERENCES payments(id) ON DELETE SET NULL,
+  INDEX idx_status (status),
+  INDEX idx_period (periodMonth),
+  INDEX idx_resident (residentId),
+  INDEX idx_dueDate (dueDate)
+) ENGINE=InnoDB;
+
+ALTER TABLE rent_invoices ADD COLUMN sentReminderDay4 BOOLEAN DEFAULT false;
+ALTER TABLE rent_invoices ADD COLUMN sentReminderDaily BOOLEAN DEFAULT false;
+
+ALTER TABLE payments ADD COLUMN sentReminderDay2 BOOLEAN DEFAULT false;
+ALTER TABLE payments ADD COLUMN sentReminderDay3 BOOLEAN DEFAULT false;
+ALTER TABLE payments ADD COLUMN sentReminderDay4 BOOLEAN DEFAULT false;
+ALTER TABLE payments ADD COLUMN sentReminderDaily BOOLEAN DEFAULT false;
+ALTER TABLE payments ADD COLUMN sentOverdue BOOLEAN DEFAULT false;
+
+-- ALTER TABLE for existing databases (add profession fields to users)
+-- ALTER TABLE users ADD COLUMN profession VARCHAR(100) AFTER deviceInfo;
+-- ALTER TABLE users ADD COLUMN skills TEXT AFTER profession;
+-- ALTER TABLE users ADD COLUMN experience_years VARCHAR(50) AFTER skills;
+-- ALTER TABLE users ADD COLUMN availability VARCHAR(100) AFTER experience_years;
+-- ALTER TABLE users ADD COLUMN skill_visibility ENUM('public','community_only','private') DEFAULT 'private' AFTER availability;

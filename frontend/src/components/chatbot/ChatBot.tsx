@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, User, Sparkles, MessageSquare, AlertTriangle, FileText, Home, Lightbulb, TrendingUp, Shield, Cpu, X, Minimize2, Maximize2 } from 'lucide-react';
+import { Bot, Send, User, Sparkles, MessageSquare, AlertTriangle, FileText, Home, Lightbulb, TrendingUp, Shield, Cpu, Search, X, Minimize2, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +26,7 @@ const features = [
   { icon: Lightbulb, label: 'Smart Recommendations', desc: 'Personalized suggestions based on your activity', color: 'text-secondary-500' },
   { icon: TrendingUp, label: 'Predictive Insights', desc: 'AI-powered predictions for community trends', color: 'text-primary-500' },
   { icon: Cpu, label: 'Smart Automation', desc: 'Automate routine tasks with AI assistance', color: 'text-purple-500' },
+  { icon: Search, label: 'Community Skills', desc: 'Find skilled neighbors and experts', color: 'text-secondary-500' },
 ];
 
 const initialMessages: { id: string; role: string; text: string }[] = [
@@ -161,6 +162,11 @@ export default function ChatBot() {
         setPos({ x: parsed.x, y: parsed.y });
         setCorner(parsed.corner || 'bottom-right');
       } catch { /* ignore */ }
+    } else {
+      const right = window.innerWidth - BUBBLE_SIZE - MARGIN;
+      const bottom = window.innerHeight - BUBBLE_SIZE - MARGIN;
+      setPos({ x: right, y: bottom });
+      setCorner('bottom-right');
     }
     initialized.current = true;
   }, []);
@@ -185,12 +191,74 @@ export default function ChatBot() {
     return () => window.removeEventListener('resize', handleResize);
   }, [open, minimized, recalcPanel]);
 
+  const SKILL_CATEGORIES = [
+    'software developer', 'ai engineer', 'data scientist', 'teacher', 'doctor',
+    'lawyer', 'electrician', 'plumber', 'carpenter', 'fitness trainer',
+    'music teacher', 'tuition teacher', 'graphic designer', 'photographer',
+    'business consultant',
+  ];
+
+  const SKILL_PATTERNS = [
+    /find\s+(?:a\s+)?(.*)/i, /need\s+(?:a\s+)?(.*)/i, /who\s+(?:can\s+)?(.*)/i,
+    /looking\s+for\s+(?:a\s+)?(.*)/i, /any\s+(.*)\s+available/i,
+  ];
+
+  const matchesSkillQuery = (q: string): string | null => {
+    const lower = q.toLowerCase();
+    for (const cat of SKILL_CATEGORIES) {
+      if (lower.includes(cat)) return cat;
+    }
+    for (const pattern of SKILL_PATTERNS) {
+      const m = lower.match(pattern);
+      if (m) {
+        const extracted = m[1].trim();
+        for (const cat of SKILL_CATEGORIES) {
+          if (extracted.includes(cat) || cat.includes(extracted) || extracted.includes(cat.split(' ')[0])) return cat;
+        }
+      }
+    }
+    if (lower.includes('tutor') || lower.includes('tuition')) return 'tuition teacher';
+    if (lower.includes('teach') || lower.includes('math') || lower.includes('physics') || lower.includes('science')) return 'teacher';
+    if (lower.includes('python') || lower.includes('coding') || lower.includes('program')) return 'software developer';
+    if (lower.includes('plumb')) return 'plumber';
+    if (lower.includes('electric')) return 'electrician';
+    if (lower.includes('design')) return 'graphic designer';
+    if (lower.includes('photo')) return 'photographer';
+    if (lower.includes('fit') || lower.includes('trainer') || lower.includes('gym')) return 'fitness trainer';
+    if (lower.includes('music') || lower.includes('piano') || lower.includes('guitar')) return 'music teacher';
+    if (lower.includes('consult')) return 'business consultant';
+    if (lower.includes('doctor') || lower.includes('medical') || lower.includes('health')) return 'doctor';
+    if (lower.includes('law') || lower.includes('legal') || lower.includes('advocate')) return 'lawyer';
+    return null;
+  };
+
+  const handleSkillSearch = async (query: string): Promise<string> => {
+    try {
+      const res = await api.get('/skills/professionals', { q: query });
+      const results = res.data?.professionals || [];
+      if (results.length === 0) return 'No matching experts found in your community. Try a different search term.';
+      const lines = results.map((p: any, i: number) =>
+        `${i + 1}. ${p.name}\n   House: ${p.tower || ''}-${p.flatNumber || ''}\n   Profession: ${p.profession}\n   Experience: ${p.experience_years || 'N/A'}\n   Availability: ${p.availability || 'N/A'}\n`
+      );
+      return `Available Experts:\n\n${lines.join('\n')}\n\nYou can contact them via the Directory or Inbox.`;
+    } catch {
+      return 'Unable to search professionals right now. Please try again later.';
+    }
+  };
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
     const userMsg = { id: Date.now().toString(), role: 'user', text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    const skillMatch = matchesSkillQuery(text);
+    if (skillMatch) {
+      const reply = await handleSkillSearch(skillMatch);
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: 'bot', text: reply }]);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.post('/ai/chatbot', { query: text, context: messages.slice(-5) });
       const botMsg = {

@@ -48,7 +48,7 @@ export default function GlobalSearch() {
       setLoading(true);
       try {
         const res = await api.get('/search', { q: query.trim() });
-        const g = res.data?.data?.results || {};
+        const g = res.data?.results || {};
         setResults(g);
         const count = Object.values(g).reduce((s: number, arr: any) => s + arr.length, 0);
         setTotalItems(count);

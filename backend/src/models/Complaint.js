@@ -2,7 +2,7 @@ const { db, buildWhere, buildOrder, aliasRow, aliasRows } = require('./dbHelpers
 const User = require('./User');
 
 const TABLE = 'complaints';
-const COLS = 'id AS _id, residentId, category, aiCategory, aiSuggestedDepartment, aiSummary, title, description, priority, aiPriority, status, assignedTo, images, location, flatNumber, resolution, resolvedAt, resolvedBy, feedback, feedbackComment, createdAt, updatedAT';
+const COLS = 'id AS _id, residentId, category, aiCategory, aiSuggestedDepartment, aiSummary, title, description, priority, aiPriority, status, assignedTo, images, location, flatNumber, resolution, resolvedAt, resolvedBy, feedback, feedbackComment, createdAt, updatedAt';
 
 async function populate(c) {
   if (!c) return c;

@@ -6,6 +6,7 @@ const { connectDB } = require('./config/db');
 const initDatabase = require('./config/initDb');
 const setupSocketHandlers = require('./websocket/socketHandler');
 const logger = require('./utils/logger');
+const { startRentCron } = require('./services/rentCron');
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception:', err);
@@ -63,6 +64,8 @@ const startServer = async (retries = 3) => {
       await new Promise((r) => setTimeout(r, 3000));
     }
   }
+
+  startRentCron(io, 3600000);
 
   server.listen(config.port, () => {
     logger.info(`VisionGate server running on port ${config.port}`);

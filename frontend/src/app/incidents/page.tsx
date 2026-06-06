@@ -31,7 +31,7 @@ export default function IncidentsPage() {
       const params: any = {};
       if (filter) params.status = filter;
       const res = await api.get('/incidents', params);
-      setIncidents(res.data?.data?.incidents || []);
+      setIncidents(res.data?.incidents || []);
     } catch {} finally { setLoading(false); }
   };
 

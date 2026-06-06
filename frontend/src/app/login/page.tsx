@@ -3,8 +3,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, HelpCircle, X, Send, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '@/lib/api';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -13,6 +14,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [recoveryForm, setRecoveryForm] = useState({ userName: '', email: '', phoneNumber: '', reason: '' });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +30,35 @@ export default function LoginPage() {
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
     } finally { setLoading(false); }
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!recoveryForm.userName.trim()) errors.userName = 'Please enter your name.';
+    if (!recoveryForm.email.trim()) errors.email = 'Please enter a valid email address.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recoveryForm.email)) errors.email = 'Please enter a valid email address.';
+    if (!recoveryForm.phoneNumber.trim()) errors.phoneNumber = 'Please enter your phone number.';
+    if (!recoveryForm.reason.trim()) errors.reason = 'Please provide a reason for recovery.';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleRecoverySubmit = async () => {
+    if (!validateForm()) return;
+    setSubmitting(true);
+    const formData = { ...recoveryForm };
+    console.log("Submitting Recovery Request:", formData);
+    try {
+      const res = await api.post('/recovery-requests', formData);
+      console.log("Recovery API Response:", res);
+      toast.success('Recovery request submitted successfully. An administrator will contact you shortly.');
+      setShowForgot(false);
+      setRecoveryForm({ userName: '', email: '', phoneNumber: '', reason: '' });
+      setFormErrors({});
+    } catch (err: any) {
+      console.log("Recovery API Error:", err);
+      toast.error(err.message || 'Network error. Please try again.');
+    } finally { setSubmitting(false); }
   };
 
   return (
@@ -62,6 +96,10 @@ export default function LoginPage() {
             {loading ? <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <>Sign In <ArrowRight className="w-4 h-4" /></>}
           </button>
 
+          <button type="button" onClick={() => setShowForgot(true)} className="w-full text-center text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium">
+            <HelpCircle className="w-3.5 h-3.5 inline mr-1" /> Forgot Credentials?
+          </button>
+
           <p className="text-center text-sm text-surface-400">
             Don&apos;t have an account? <Link href="/register" className="text-primary-600 dark:text-primary-400 font-medium hover:underline">Register</Link>
           </p>
@@ -76,6 +114,56 @@ export default function LoginPage() {
           </div>
         </form>
       </div>
+
+      {showForgot && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowForgot(false)}>
+          <div className="glass-card p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Forgot Credentials?</h3>
+              <button onClick={() => setShowForgot(false)} className="p-1 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-sm text-surface-400 mb-4">Contact an administrator to recover your account. Fill out the form below and an admin will reach out to you.</p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <input className={`input-field ${formErrors.userName ? 'border-danger-500' : ''}`} value={recoveryForm.userName}
+                  onChange={(e) => { setRecoveryForm({ ...recoveryForm, userName: e.target.value }); setFormErrors({ ...formErrors, userName: '' }); }} />
+                {formErrors.userName && <p className="text-xs text-danger-500 mt-0.5">{formErrors.userName}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Registered Email</label>
+                <input type="email" className={`input-field ${formErrors.email ? 'border-danger-500' : ''}`} value={recoveryForm.email}
+                  onChange={(e) => { setRecoveryForm({ ...recoveryForm, email: e.target.value }); setFormErrors({ ...formErrors, email: '' }); }} />
+                {formErrors.email && <p className="text-xs text-danger-500 mt-0.5">{formErrors.email}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Mobile Number</label>
+                <input type="tel" className={`input-field ${formErrors.phoneNumber ? 'border-danger-500' : ''}`} value={recoveryForm.phoneNumber}
+                  onChange={(e) => { setRecoveryForm({ ...recoveryForm, phoneNumber: e.target.value }); setFormErrors({ ...formErrors, phoneNumber: '' }); }} />
+                {formErrors.phoneNumber && <p className="text-xs text-danger-500 mt-0.5">{formErrors.phoneNumber}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Reason</label>
+                <select className={`input-field ${formErrors.reason ? 'border-danger-500' : ''}`} value={recoveryForm.reason}
+                  onChange={(e) => { setRecoveryForm({ ...recoveryForm, reason: e.target.value }); setFormErrors({ ...formErrors, reason: '' }); }}>
+                  <option value="">Select a reason</option>
+                  <option value="I forgot my password.">I forgot my password.</option>
+                  <option value="I forgot my email and password.">I forgot my email and password.</option>
+                  <option value="I am unable to access my account.">I am unable to access my account.</option>
+                </select>
+                {formErrors.reason && <p className="text-xs text-danger-500 mt-0.5">{formErrors.reason}</p>}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setShowForgot(false); setFormErrors({}); }} className="btn-secondary flex-1">Cancel</button>
+                <button onClick={handleRecoverySubmit} disabled={submitting} className="btn-primary flex-1">
+                  {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : <><Send className="w-4 h-4" /> Submit Request</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

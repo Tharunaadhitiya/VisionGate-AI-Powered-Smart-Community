@@ -43,7 +43,7 @@ router.post('/', authenticate, [
 });
 
 router.put('/:id/pay', authenticate, [
-  body('paymentMethod').isIn(['credit_card', 'debit_card', 'upi', 'net_banking', 'cash']),
+  body('paymentMethod').isIn(['credit_card', 'debit_card', 'upi', 'net_banking']),
   body('transactionId').optional().trim(),
 ], validate, async (req, res) => {
   try {

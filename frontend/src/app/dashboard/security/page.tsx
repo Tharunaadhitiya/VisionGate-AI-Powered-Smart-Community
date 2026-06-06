@@ -1,10 +1,10 @@
 'use client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Camera, AlertTriangle, Shield, CheckCircle, XCircle, Search, QrCode, Clock, Eye, Activity, MessageSquare, UserCheck } from 'lucide-react';
-import { cn, formatDateTime, timeAgo, getStatusColor } from '@/lib/utils';
+import { Users, Camera, AlertTriangle, Shield, CheckCircle, Clock, Activity, MessageSquare, Phone, MapPin, LogOut, Car } from 'lucide-react';
+import { cn, timeAgo, getStatusColor } from '@/lib/utils';
 import SurveillancePanel from '@/components/surveillance/SurveillancePanel';
 import SOSEmergency from '@/components/dashboard/SOSEmergency';
 import UserDirectory from '@/components/dashboard/UserDirectory';
@@ -12,74 +12,60 @@ import OnlineStatusBadge from '@/components/dashboard/OnlineStatusBadge';
 import AIInsights from '@/components/dashboard/AIInsights';
 import toast from 'react-hot-toast';
 
+function formatDuration(ms: number): string {
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  if (hours > 0) return `${hours} Hour${hours > 1 ? 's' : ''} ${minutes} Minute${minutes !== 1 ? 's' : ''}`;
+  return `${minutes} Minute${minutes !== 1 ? 's' : ''}`;
+}
+
 export default function SecurityDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<any>({});
-  const [recentVisitors, setRecentVisitors] = useState<any[]>([]);
+  const [activeVisitors, setActiveVisitors] = useState<any[]>([]);
+  const [totalActive, setTotalActive] = useState(0);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
-  const [showScanner, setShowScanner] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [showCameras, setShowCameras] = useState(false);
   const [showSos, setShowSos] = useState(false);
   const [showDirectory, setShowDirectory] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
-  const [visitorSearch, setVisitorSearch] = useState('');
-  const [foundVisitor, setFoundVisitor] = useState<any>(null);
-  const [searchingVisitor, setSearchingVisitor] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     Promise.all([
-      api.get('/visitors?limit=10&status=checked_in'),
+      api.get('/visitors?status=entered&limit=50'),
       api.get('/alerts?limit=5&status=new'),
       api.get('/analytics/security'),
     ]).then(([visitorsRes, alertsRes, analyticsRes]) => {
-      setRecentVisitors(visitorsRes.data.visitors || []);
+      setActiveVisitors(visitorsRes.data.visitors || []);
+      setTotalActive(visitorsRes.data.total || 0);
       setAlerts(alertsRes.data.alerts || []);
       setStats(analyticsRes.data || {});
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  const handleCheckIn = async (id: string) => {
-    try { await api.put('/visitors/' + id + '/status', { status: 'checked_in' }); window.location.reload(); } catch {}
-  };
-
-  const handleCheckOut = async (id: string) => {
-    try { await api.put('/visitors/' + id + '/status', { status: 'checked_out' }); window.location.reload(); } catch {}
-  };
+  const handleMarkExit = useCallback(async (id: string) => {
+    try {
+      await api.put('/visitors/' + id + '/exit');
+      toast.success('Visitor exit recorded');
+      setActiveVisitors((prev) => prev.filter((v) => v._id !== id));
+      setTotalActive((prev) => Math.max(0, prev - 1));
+    } catch { toast.error('Failed to record exit'); }
+  }, []);
 
   const acknowledgeAlert = async (id: string) => {
     try { await api.put('/alerts/' + id + '/acknowledge'); window.location.reload(); } catch {}
   };
 
-  const searchVisitorByPhone = async () => {
-    if (!visitorSearch.trim()) return;
-    setSearchingVisitor(true);
-    try {
-      const { data } = await api.get('/visitors?limit=5');
-      const visitors = data.visitors || [];
-      const found = visitors.find((v: any) => v.phone.includes(visitorSearch) || v.name.toLowerCase().includes(visitorSearch.toLowerCase()));
-      setFoundVisitor(found || null);
-      if (!found) toast.error('No visitor found matching that criteria');
-    } catch { toast.error('Search failed'); }
-    setSearchingVisitor(false);
-  };
-
-  const verifyOTP = async () => {
-    if (!foundVisitor || !otpInput.trim()) return toast.error('First search for a visitor, then enter OTP');
-    try {
-      await api.put('/visitors/' + foundVisitor._id + '/verify-otp', { otp: otpInput });
-      toast.success('OTP verified! Visitor checked in.');
-      setOtpInput('');
-      setFoundVisitor(null);
-      setVisitorSearch('');
-      window.location.reload();
-    } catch (err: any) { toast.error(err.message || 'Invalid or expired OTP'); }
-  };
-
   if (loading) return <DashboardLayout><div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div></DashboardLayout>;
 
   const statCards = [
-    { label: 'Active Visitors', value: stats.totalVisitors || 0, icon: Users, color: 'text-primary-500', bg: 'bg-primary-50 dark:bg-primary-500/10' },
+    { label: 'Active Visitors', value: totalActive, icon: Users, color: 'text-primary-500', bg: 'bg-primary-50 dark:bg-primary-500/10' },
     { label: 'Suspicious', value: stats.suspiciousCount || 0, icon: AlertTriangle, color: 'text-danger-500', bg: 'bg-danger-50 dark:bg-danger-500/10' },
     { label: 'Emergency Alerts', value: stats.emergencyCount || 0, icon: Shield, color: 'text-warning-500', bg: 'bg-warning-50 dark:bg-warning-500/10' },
     { label: 'Cameras Active', value: '7/8', icon: Camera, color: 'text-secondary-500', bg: 'bg-secondary-50 dark:bg-secondary-500/10' },
@@ -129,27 +115,73 @@ export default function SecurityDashboard() {
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="section-title">Active Visitors</h3>
-              <button onClick={() => setShowScanner(true)} className="btn-primary text-sm"><QrCode className="w-4 h-4" /> Verify Entry</button>
+              <span className="text-xs text-surface-400">{totalActive} inside</span>
             </div>
-            {recentVisitors.length === 0 ? (
-              <div className="text-center py-8 text-surface-400 text-sm">No active visitors</div>
+            {activeVisitors.length === 0 ? (
+              <div className="text-center py-10 text-surface-400">
+                <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                <p className="text-sm">No active visitors currently inside the community.</p>
+              </div>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {recentVisitors.map((v) => (
-                  <div key={v._id} className="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-800/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold">{v.name.charAt(0)}</div>
-                      <div>
-                        <p className="text-sm font-medium">{v.name}</p>
-                        <p className="text-xs text-surface-400">{v.purpose} &middot; {v.vehicleNumber || 'No vehicle'}</p>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {activeVisitors.map((v) => {
+                  const entryTime = v.entryTime ? new Date(v.entryTime) : null;
+                  const duration = entryTime ? now - entryTime.getTime() : 0;
+                  return (
+                    <div key={v._id} className="p-4 rounded-xl bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700/50">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                            {v.name?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{v.name}</p>
+                            <div className="flex items-center gap-1.5 text-xs text-surface-400 mt-0.5">
+                              <Phone className="w-3 h-3" />
+                              {v.phone}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="badge badge-secondary text-[10px]">Inside Community</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                        <div className="flex items-center gap-1.5 text-surface-400">
+                          <MapPin className="w-3 h-3 text-primary-500" />
+                          <span><span className="font-medium text-surface-600 dark:text-surface-300">Resident:</span> {v.resident?.name || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-surface-400">
+                          <MessageSquare className="w-3 h-3 text-secondary-500" />
+                          <span><span className="font-medium text-surface-600 dark:text-surface-300">Purpose:</span> {v.purpose}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-surface-400">
+                          <MapPin className="w-3 h-3 text-warning-500" />
+                          <span><span className="font-medium text-surface-600 dark:text-surface-300">House:</span> {v.houseCode || (v.house?.houseCode)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-surface-400">
+                          <Car className="w-3 h-3 text-info-500" />
+                          <span><span className="font-medium text-surface-600 dark:text-surface-300">Vehicle:</span> {v.vehicleNumber || 'N/A'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-surface-200 dark:border-surface-700/50">
+                        <div className="flex items-center gap-3 text-xs text-surface-400">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Entry: {entryTime ? entryTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                          </div>
+                          <div className="flex items-center gap-1 text-primary-600 dark:text-primary-400 font-medium">
+                            <Activity className="w-3 h-3" />
+                            {duration > 0 ? formatDuration(duration) : 'Just now'}
+                          </div>
+                        </div>
+                        <button onClick={() => handleMarkExit(v._id)} className="btn-danger text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg">
+                          <LogOut className="w-3.5 h-3.5" /> Mark Exit
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={cn('badge text-xs', getStatusColor(v.status))}>{v.status}</span>
-                      {v.status === 'checked_in' && <button onClick={() => handleCheckOut(v._id)} className="p-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 hover:bg-surface-300"><CheckCircle className="w-3.5 h-3.5 text-secondary-600" /></button>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -162,7 +194,7 @@ export default function SecurityDashboard() {
             {alerts.length === 0 ? (
               <div className="text-center py-8 text-surface-400 text-sm">All clear - no active alerts</div>
             ) : (
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {alerts.map((a) => (
                   <div key={a._id} className="flex items-center justify-between p-3 rounded-xl bg-danger-50/50 dark:bg-danger-500/5 border border-danger-100 dark:border-danger-500/20">
                     <div className="flex-1 min-w-0">
@@ -174,7 +206,7 @@ export default function SecurityDashboard() {
                     </div>
                     <div className="flex items-center gap-2 ml-2">
                       <span className={cn('badge text-xs', a.severity === 'critical' ? 'badge-danger' : 'badge-warning')}>{a.severity}</span>
-                      <button onClick={() => acknowledgeAlert(a._id)} className="p-1.5 rounded-lg bg-white dark:bg-surface-800 hover:bg-surface-100"><Eye className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => acknowledgeAlert(a._id)} className="p-1.5 rounded-lg bg-white dark:bg-surface-800 hover:bg-surface-100">Ack</button>
                     </div>
                   </div>
                 ))}
@@ -183,57 +215,6 @@ export default function SecurityDashboard() {
           </div>
         </div>
       </div>
-
-      {showScanner && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowScanner(false)}>
-          <div className="glass-card p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Visitor OTP Verification</h3>
-              <button onClick={() => setShowScanner(false)} className="p-1 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800"><XCircle className="w-5 h-5" /></button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-surface-400 block mb-1">Search Visitor by Name or Phone</label>
-                <div className="flex gap-2">
-                  <input className="input-field flex-1 text-sm" placeholder="Enter name or phone number..." value={visitorSearch} onChange={(e) => setVisitorSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchVisitorByPhone()} />
-                  <button onClick={searchVisitorByPhone} disabled={searchingVisitor} className="btn-primary"><Search className="w-4 h-4" /></button>
-                </div>
-              </div>
-
-              {foundVisitor && (
-                <div className="p-3 rounded-xl bg-secondary-50 dark:bg-secondary-500/10 border border-secondary-200 dark:border-secondary-500/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">{foundVisitor.name.charAt(0)}</div>
-                    <div>
-                      <p className="text-sm font-medium">{foundVisitor.name}</p>
-                      <p className="text-xs text-surface-400">{foundVisitor.phone} &middot; {foundVisitor.purpose}</p>
-                      <p className="text-xs text-surface-400">Status: <span className={cn('badge text-[10px]', getStatusColor(foundVisitor.status))}>{foundVisitor.status}</span></p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <label className="text-xs font-medium text-surface-400 block mb-1">Enter OTP</label>
-                    <div className="flex gap-2">
-                      <input className="input-field flex-1 text-center text-lg tracking-widest" placeholder="000000" value={otpInput} onChange={(e) => setOtpInput(e.target.value)} maxLength={6} />
-                      <button onClick={verifyOTP} className="btn-primary"><UserCheck className="w-4 h-4" /> Verify</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!foundVisitor && visitorSearch && !searchingVisitor && (
-                <p className="text-xs text-surface-400 text-center py-2">No visitor found. Try a different search.</p>
-              )}
-
-              <div className="text-center text-xs text-surface-400 mt-2">
-                <p>Visitors receive an OTP when registered by a resident.</p>
-                <p>Enter the OTP to verify and allow entry.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showSos && <SOSEmergency onClose={() => setShowSos(false)} />}
       {showDirectory && <UserDirectory onClose={() => setShowDirectory(false)} />}
