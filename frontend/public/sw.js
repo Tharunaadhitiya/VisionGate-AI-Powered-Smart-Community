@@ -1,7 +1,7 @@
-const CACHE_NAME = 'visiongate-v2';
-const STATIC_CACHE = 'visiongate-static-v2';
-const NAV_CACHE = 'visiongate-nav-v2';
-// build: 2026-06-05-2
+const CACHE_NAME = 'visiongate-v3';
+const STATIC_CACHE = 'visiongate-static-v3';
+const NAV_CACHE = 'visiongate-nav-v3';
+// build: 2026-06-06
 
 const PRECACHE_URLS = [
   '/',
@@ -69,7 +69,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isStaticAsset(url)) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
 
@@ -81,19 +81,16 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirstWithCache(request, NAV_CACHE));
 });
 
-async function cacheFirst(request) {
+async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
-  if (cached) return cached;
-  try {
-    const response = await fetch(request);
+  const fetchPromise = fetch(request).then((response) => {
     if (response.ok) {
-      const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, response.clone());
+      const cache = caches.open(STATIC_CACHE);
+      cache.then((c) => c.put(request, response.clone()));
     }
     return response;
-  } catch {
-    return new Response('Offline', { status: 503 });
-  }
+  }).catch(() => cached);
+  return cached || fetchPromise;
 }
 
 async function networkFirstWithCache(request, cacheName) {

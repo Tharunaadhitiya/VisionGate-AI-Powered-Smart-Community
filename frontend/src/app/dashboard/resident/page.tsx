@@ -35,6 +35,8 @@ export default function ResidentDashboard() {
   const [paymentMethod, setPaymentMethod] = useState('upi');
   const [processingPayment, setProcessingPayment] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any>(null);
+  const [lostItems, setLostItems] = useState<any[]>([]);
+  const [foundItems, setFoundItems] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -46,9 +48,10 @@ export default function ResidentDashboard() {
         api.get('/complaints', { limit: '3' }),
         api.get('/analytics/resident/' + user._id),
         api.get('/payments'),
+        api.get('/lost-found/my-items'),
       ]);
 
-      const [visitorsRes, complaintsRes, analyticsRes, paymentsRes] = results;
+      const [visitorsRes, complaintsRes, analyticsRes, paymentsRes, lostItemsRes] = results;
 
       if (visitorsRes.status === 'fulfilled') {
         setRecentVisitors(visitorsRes.value.data.visitors || []);
@@ -64,6 +67,11 @@ export default function ResidentDashboard() {
         setPayments(paymentsRes.value.data.payments || []);
       } else {
         console.error('Payments API failed:', paymentsRes.reason);
+      }
+      if (lostItemsRes.status === 'fulfilled') {
+        const d = lostItemsRes.value.data || {};
+        setLostItems(d.lostItems || []);
+        setFoundItems(d.foundItems || []);
       }
 
       setLoading(false);
@@ -277,6 +285,30 @@ export default function ResidentDashboard() {
                       <p className="text-xs text-surface-500 dark:text-surface-400">{c.category} &middot; {timeAgo(c.createdAt)}</p>
                     </div>
                     <span className={cn('badge text-xs ml-2', getStatusColor(c.status))}>{c.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="section-title">Lost & Found</h3>
+              <Link href="/lost-and-found" className="text-sm text-primary-600 dark:text-primary-400 font-medium flex items-center gap-1 hover:underline">
+                View All <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            {lostItems.length === 0 && foundItems.length === 0 ? (
+              <div className="text-center py-8 text-surface-400 text-sm">No lost or found items reported</div>
+            ) : (
+              <div className="space-y-2">
+                {[...lostItems, ...foundItems].slice(0, 5).map((item: any) => (
+                  <div key={item._id} className="flex items-center justify-between p-3 rounded-xl bg-surface-50 dark:bg-surface-800/50">
+                    <div>
+                      <p className="text-sm font-medium text-surface-900 dark:text-surface-100">{item.itemName}</p>
+                      <p className="text-xs text-surface-500">{item.location || item.foundLocation || ''}</p>
+                    </div>
+                    <span className={cn('badge text-xs', item.status === 'recovered' ? 'badge-secondary' : item.status === 'matched' ? 'badge-warning' : 'badge-primary')}>{item.status}</span>
                   </div>
                 ))}
               </div>

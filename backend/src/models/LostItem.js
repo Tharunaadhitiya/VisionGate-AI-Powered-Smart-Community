@@ -2,15 +2,19 @@ const { db, buildWhere, buildOrder, aliasRow, aliasRows } = require('./dbHelpers
 const User = require('./User');
 
 const TABLE = 'lost_items';
-const COLS = 'id AS _id, itemName, description, location, dateLost, imageUrl, color, brand, status, reportedBy, matchedItemId, matchScore, resolvedAt, createdAt, updatedAt';
+const COLS = 'id AS _id, itemName, description, location, dateLost, imageUrl, color, brand, status, reportedBy, claimedBy, confirmedById, matchedItemId, matchScore, resolvedAt, recoveredAt, createdAt, updatedAt';
 
 async function populate(item) {
   if (!item) return item;
-  const [reporter, matched] = await Promise.all([
+  const [reporter, claimer, confirmer, matched] = await Promise.all([
     item.reportedBy ? User.findById(item.reportedBy) : null,
+    item.claimedBy ? User.findById(item.claimedBy) : null,
+    item.confirmedById ? User.findById(item.confirmedById) : null,
     item.matchedItemId ? (async () => { const FoundItem = require('./FoundItem'); return FoundItem.findById(item.matchedItemId); })() : null,
   ]);
   item.reportedBy = reporter;
+  item.claimedBy = claimer;
+  item.confirmedById = confirmer;
   item.matchedItem = matched;
   return item;
 }

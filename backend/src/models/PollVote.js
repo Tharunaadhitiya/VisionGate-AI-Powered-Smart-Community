@@ -25,6 +25,15 @@ const PollVote = {
     const rows = await db.query(`SELECT optionIndex, COUNT(*) AS count FROM ${TABLE} WHERE pollId = ? GROUP BY optionIndex`, [pollId]);
     return rows;
   },
+  async findByPollAndUser(pollId, userId) {
+    return aliasRows(await db.query(`SELECT ${COLS} FROM ${TABLE} WHERE pollId = ? AND userId = ?`, [pollId, userId]));
+  },
+  async deleteByPollAndUser(pollId, userId) {
+    await db.query(`DELETE FROM ${TABLE} WHERE pollId = ? AND userId = ?`, [pollId, userId]);
+  },
+  async deleteByPollUserAndOption(pollId, userId, optionIndex) {
+    await db.query(`DELETE FROM ${TABLE} WHERE pollId = ? AND userId = ? AND optionIndex = ?`, [pollId, userId, optionIndex]);
+  },
 };
 
 module.exports = PollVote;

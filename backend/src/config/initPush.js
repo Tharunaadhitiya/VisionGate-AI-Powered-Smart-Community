@@ -50,10 +50,10 @@ async function createPushTables() {
       body TEXT,
       type VARCHAR(100) DEFAULT NULL,
       data JSON DEFAULT NULL,
-      read BOOLEAN DEFAULT FALSE,
+      is_read BOOLEAN DEFAULT FALSE,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_userId (userId),
-      INDEX idx_userId_read (userId, read)
+      INDEX idx_userId_read (userId, is_read)
     )
   `);
 

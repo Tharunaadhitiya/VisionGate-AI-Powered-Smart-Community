@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const BUBBLE_SIZE = 64;
 const GAP = 14;
-const MARGIN = 16;
+const MARGIN = 20;
+const DRAG_THRESHOLD = 5;
 const NAVBAR_HEIGHT = 64;
 const SIDEBAR_WIDTH_LG = 256;
 
@@ -126,6 +127,8 @@ function computePanelPosition(bubbleX: number, bubbleY: number, corner: Corner, 
 }
 
 export default function ChatBot() {
+  console.log('[AI Bubble] render');
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState<{ id: string; role: string; text: string }[]>(initialMessages);
@@ -134,11 +137,28 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const [dragging, setDragging] = useState(false);
-  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window === 'undefined') return { x: 0, y: 0 };
+    try {
+      const saved = localStorage.getItem('aiAssistantPosition');
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (typeof p.x === 'number' && typeof p.y === 'number') {
+          console.log('[AI Bubble] position restored', p);
+          return { x: p.x, y: p.y };
+        }
+      }
+    } catch {}
+    const defaultX = window.innerWidth - BUBBLE_SIZE - 20;
+    const defaultY = window.innerHeight - BUBBLE_SIZE - 100;
+    console.log('[AI Bubble] mounted at default position', { x: defaultX, y: defaultY });
+    return { x: defaultX, y: defaultY };
+  });
   const [corner, setCorner] = useState<Corner>('bottom-right');
   const dragRef = useRef<{ startX: number; startY: number; posX: number; posY: number }>({ startX: 0, startY: 0, posX: 0, posY: 0 });
-  const initialized = useRef(false);
+  const isDraggingRef = useRef(false);
+  const bubbleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [panelPos, setPanelPos] = useState<PanelPosition>({ left: 0, top: 0, openUp: false, openLeft: false });
@@ -155,26 +175,12 @@ export default function ChatBot() {
   }, [open, minimized, pos, corner]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('vg_chatbot_pos');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setPos({ x: parsed.x, y: parsed.y });
-        setCorner(parsed.corner || 'bottom-right');
-      } catch { /* ignore */ }
-    } else {
-      const right = window.innerWidth - BUBBLE_SIZE - MARGIN;
-      const bottom = window.innerHeight - BUBBLE_SIZE - MARGIN;
-      setPos({ x: right, y: bottom });
-      setCorner('bottom-right');
-    }
-    initialized.current = true;
+    setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!initialized.current) return;
-    localStorage.setItem('vg_chatbot_pos', JSON.stringify({ x: pos.x, y: pos.y, corner }));
-  }, [pos, corner]);
+    localStorage.setItem('aiAssistantPosition', JSON.stringify({ x: pos.x, y: pos.y }));
+  }, [pos]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -276,8 +282,10 @@ export default function ChatBot() {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (open) return;
+    console.log('[AI Bubble] pointerdown');
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    setDragging(true);
+    setIsDragging(false);
+    isDraggingRef.current = false;
     dragRef.current.startX = e.clientX;
     dragRef.current.startY = e.clientY;
     dragRef.current.posX = pos.x;
@@ -285,23 +293,60 @@ export default function ChatBot() {
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragging) return;
+    if (dragRef.current.startX === 0 && dragRef.current.startY === 0) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    setPos({ x: dragRef.current.posX + dx, y: dragRef.current.posY + dy });
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > DRAG_THRESHOLD) {
+      if (!isDraggingRef.current) {
+        isDraggingRef.current = true;
+        setIsDragging(true);
+        console.log('[AI Bubble] dragstart');
+      }
+      const newX = Math.max(0, Math.min(window.innerWidth - BUBBLE_SIZE, dragRef.current.posX + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - BUBBLE_SIZE, dragRef.current.posY + dy));
+      setPos({ x: newX, y: newY });
+      console.log('[AI Bubble] dragmove', { x: newX, y: newY });
+    }
   };
 
   const handlePointerUp = () => {
-    if (!dragging) return;
-    setDragging(false);
-    const snapped = snapToCorner(pos.x, pos.y, BUBBLE_SIZE, BUBBLE_SIZE);
-    setPos({ x: snapped.x, y: snapped.y });
-    setCorner(snapped.corner);
+    if (isDraggingRef.current) {
+      console.log('[AI Bubble] dragend');
+      console.log('[AI Bubble] click blocked');
+      const snapped = snapToCorner(pos.x, pos.y, BUBBLE_SIZE, BUBBLE_SIZE);
+      setPos({ x: snapped.x, y: snapped.y });
+      setCorner(snapped.corner);
+      setTimeout(() => {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+      }, 100);
+    } else {
+      console.log('[AI Bubble] pointerup (no drag)');
+      console.log('[AI Bubble] click allowed');
+      setOpen(!open);
+      setMinimized(false);
+    }
+    dragRef.current.startX = 0;
+    dragRef.current.startY = 0;
+  };
+
+  const handlePointerCancel = () => {
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    dragRef.current.startX = 0;
+    dragRef.current.startY = 0;
+  };
+
+  const resetPosition = () => {
+    const defaultX = window.innerWidth - BUBBLE_SIZE - 20;
+    const defaultY = window.innerHeight - BUBBLE_SIZE - 100;
+    setPos({ x: defaultX, y: defaultY });
+    setCorner('bottom-right');
   };
 
   const getBubbleStyle = (): React.CSSProperties => {
-    const offset = pos.x === 0 && pos.y === 0 ? {} : { left: pos.x, top: pos.y };
-    return { position: 'fixed', ...offset, zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: `${GAP}px` };
+    return { position: 'fixed', left: pos.x, top: pos.y, zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: `${GAP}px` };
   };
 
   const getPanelOrigin = (): { x: number; y: number } => {
@@ -314,6 +359,8 @@ export default function ChatBot() {
     return { x, y };
   };
 
+  if (!mounted) return null;
+
   return (
     <>
       <div style={getBubbleStyle()}>
@@ -325,7 +372,16 @@ export default function ChatBot() {
               exit={{ opacity: 0, y: 10, scale: 0.9 }}
               className="px-3 py-1.5 rounded-xl bg-surface-900 dark:bg-surface-100 text-white dark:text-surface-900 text-xs font-medium shadow-lg whitespace-nowrap"
             >
-              AI Assistant
+              <div className="flex items-center gap-3">
+                <span>AI Assistant</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetPosition(); }}
+                  className="text-[10px] text-primary-300 dark:text-primary-500 hover:text-primary-200 underline underline-offset-2"
+                  title="Reset to default position"
+                >
+                  Reset position
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -351,18 +407,18 @@ export default function ChatBot() {
         </AnimatePresence>
 
         <motion.button
+          ref={bubbleRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          onClick={() => { if (!dragging) { setOpen(!open); setMinimized(false); } }}
-          whileHover={!dragging ? { scale: 1.1 } : {}}
-          whileTap={!dragging ? { scale: 0.9 } : {}}
+          whileHover={!isDragging ? { scale: 1.1 } : {}}
+          whileTap={!isDragging ? { scale: 0.9 } : {}}
           className={cn(
             'relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white shadow-2xl flex items-center justify-center transition-shadow duration-300',
-            dragging ? 'cursor-grabbing shadow-primary-500/70 shadow-2xl scale-105' : 'cursor-grab',
+            isDragging ? 'cursor-grabbing shadow-primary-500/70 shadow-2xl scale-105' : 'cursor-grab',
             open && 'shadow-lg'
           )}
           style={{ touchAction: 'none' }}

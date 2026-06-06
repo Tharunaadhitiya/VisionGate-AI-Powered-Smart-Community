@@ -1,7 +1,8 @@
 'use client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, Send, Search, Loader2, Mail, User, Shield, Home, Circle, MessageCircle, Info, ArrowLeft, MoreHorizontal, Phone, Clock, CheckCheck, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { MessageSquare, Send, Search, Loader2, Mail, User, Shield, Home, Circle, MessageCircle, Info, ChevronLeft, MoreHorizontal, Phone, Clock, CheckCheck, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
@@ -41,6 +42,7 @@ function formatConversationTime(dateStr: string) {
 }
 
 export default function InboxPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const { connected, onlineUsers, chatMessages, emit, typingUser, conversationUpdated } = useSocket();
   const [users, setUsers] = useState<ChatUser[]>([]);
@@ -102,6 +104,16 @@ export default function InboxPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, chatMessages]);
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    const handlePopState = () => {
+      setShowMobileList(true);
+      setSelectedUser(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedUser]);
 
   const updateConversationFromMessage = useCallback((newMsg: MessageItem) => {
     if (!user) return;
@@ -374,8 +386,9 @@ export default function InboxPage() {
             <>
               <div className="flex items-center gap-2 p-3 border-b border-surface-100 dark:border-surface-800 bg-surface-50/50 dark:bg-surface-800/30">
                 <button onClick={() => { setShowMobileList(true); setSelectedUser(null); }}
-                  className="md:hidden p-1 rounded hover:bg-surface-200 dark:hover:bg-surface-700">
-                  <ArrowLeft className="w-4 h-4" />
+                  className="flex items-center gap-1.5 p-1.5 pr-3 rounded-lg text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-500/10 transition-colors font-medium shrink-0">
+                  <ChevronLeft className="w-5 h-5" />
+                  <span className="text-sm">Back</span>
                 </button>
                 <div className="relative">
                   <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold">

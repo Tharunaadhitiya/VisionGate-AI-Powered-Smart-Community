@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { Bell, Plus, Search, X, Calendar, Clock, AlertTriangle, FileText, Building2, Shield, Users, Megaphone, Edit3, Trash2, CheckSquare, BarChart3, Vote, Loader2 } from 'lucide-react';
-import { cn, timeAgo } from '@/lib/utils';
+import { useSocket } from '@/hooks/useSocket';
+import { Bell, Plus, Search, X, Calendar, Clock, AlertTriangle, Building2, Shield, Users, Megaphone, Trash2, CheckSquare, BarChart3, Vote, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 const categories = ['general', 'maintenance', 'security', 'events', 'emergency'];
@@ -20,6 +21,7 @@ const categoryColors: Record<string, string> = {
 
 export default function NoticesPage() {
   const { user } = useAuth();
+  const { socket } = useSocket();
   const [notices, setNotices] = useState<any[]>([]);
   const [polls, setPolls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,9 +31,22 @@ export default function NoticesPage() {
   const [showPollForm, setShowPollForm] = useState(false);
   const [noticeForm, setNoticeForm] = useState({ title: '', description: '', category: 'general', priority: 'medium', expiryDate: '' });
   const [pollForm, setPollForm] = useState({ title: '', description: '', category: 'general', startDate: '', endDate: '', options: ['', ''], allowMultipleVotes: false });
-  const [voteLoading, setVoteLoading] = useState<string | null>(null);
+  const [votingPolls, setVotingPolls] = useState<Record<string, boolean>>({});
   const [showResults, setShowResults] = useState<Record<string, boolean>>({});
   const isAdmin = user?.role === 'admin';
+
+  const updatePollInState = useCallback((updated: any) => {
+    setPolls((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (data: any) => {
+      if (data && data._id) updatePollInState(data);
+    };
+    socket.on('poll:updated', handler);
+    return () => { socket.off('poll:updated', handler); };
+  }, [socket, updatePollInState]);
 
   const fetchNotices = async () => {
     try {
@@ -46,7 +61,7 @@ export default function NoticesPage() {
     try {
       const res = await api.get('/polls');
       setPolls(res.data?.polls || []);
-    } catch {}
+    } catch (err: any) { console.error('Fetch polls error:', err); }
   };
 
   const fetchData = async () => {
@@ -88,16 +103,21 @@ export default function NoticesPage() {
       setShowPollForm(false);
       setPollForm({ title: '', description: '', category: 'general', startDate: '', endDate: '', options: ['', ''], allowMultipleVotes: false });
       fetchPolls();
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to create poll'); }
+    } catch (err: any) { toast.error(err?.message || 'Failed to create poll'); }
   };
 
   const handleVote = async (pollId: string, optionIndex: number) => {
-    setVoteLoading(pollId);
+    setVotingPolls((prev) => ({ ...prev, [pollId]: true }));
     try {
-      await api.post(`/polls/${pollId}/vote`, { optionIndex });
-      toast.success('Vote cast!');
+      const res = await api.post(`/polls/${pollId}/vote`, { optionIndex });
+      if (res.data?.poll) updatePollInState(res.data.poll);
+      else fetchPolls();
+    } catch (err: any) {
+      toast.error(err?.message || 'Vote failed');
       fetchPolls();
-    } catch (err: any) { toast.error(err.response?.data?.message || 'Vote failed'); } finally { setVoteLoading(null); }
+    } finally {
+      setVotingPolls((prev) => ({ ...prev, [pollId]: false }));
+    }
   };
 
   const handleDeletePoll = async (id: string) => {
@@ -107,11 +127,6 @@ export default function NoticesPage() {
       toast.success('Poll removed');
       fetchPolls();
     } catch { toast.error('Failed to remove'); }
-  };
-
-  const getVotedOptions = (poll: any) => {
-    if (!poll.voteDistribution) return [];
-    return Object.keys(poll.voteDistribution).map(Number);
   };
 
   const filteredNotices = notices.filter((n) =>
@@ -197,6 +212,9 @@ export default function NoticesPage() {
                     const totalVotes = poll.totalVotes || 0;
                     const dist = poll.voteDistribution || {};
                     const showResult = showResults[poll._id];
+                    const myVotes: number[] = poll.myVotes || [];
+                    const isClosed = new Date(poll.endDate) < new Date();
+                    const isVoting = votingPolls[poll._id];
                     return (
                       <div key={poll._id} className="glass-card p-5">
                         <div className="flex items-start justify-between mb-3">
@@ -205,6 +223,7 @@ export default function NoticesPage() {
                               <CheckSquare className="w-4 h-4 text-primary-500" />
                               <h3 className="font-semibold">{poll.title}</h3>
                               <span className={cn('badge text-[10px]', categoryColors[poll.category] || categoryColors.general)}>{poll.category}</span>
+                              {poll.allowMultipleVotes && <span className="badge text-[10px] badge-neutral">Multiple answers</span>}
                             </div>
                             {poll.description && <p className="text-sm text-surface-400 mb-1">{poll.description}</p>}
                             <div className="flex items-center gap-3 text-xs text-surface-400">
@@ -221,39 +240,46 @@ export default function NoticesPage() {
                           {options.map((opt: string, idx: number) => {
                             const count = dist[idx] || 0;
                             const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-                            const isSelected = getVotedOptions(poll).includes(idx);
+                            const isSelected = myVotes.includes(idx);
                             return (
                               <div key={idx}>
                                 {showResult ? (
                                   <div className="p-3 rounded-lg bg-surface-50 dark:bg-surface-800/50">
                                     <div className="flex items-center justify-between mb-1">
-                                      <span className="text-sm font-medium">{opt}</span>
+                                      <span className="text-sm font-medium">{opt} {isSelected && <span className="text-primary-500 text-xs ml-1">(Your vote)</span>}</span>
                                       <span className="text-xs text-surface-400">{count} ({pct}%)</span>
                                     </div>
                                     <div className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
-                                      <div className="h-full bg-primary-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                      <div className={cn('h-full rounded-full transition-all duration-500', isSelected ? 'bg-primary-500' : 'bg-surface-400')} style={{ width: `${pct}%` }} />
                                     </div>
                                   </div>
                                 ) : (
                                   <button
                                     onClick={() => handleVote(poll._id, idx)}
-                                    disabled={voteLoading === poll._id || new Date(poll.endDate) < new Date()}
+                                    disabled={isClosed || isVoting}
                                     className={cn(
-                                      'flex items-center gap-3 w-full p-3 rounded-lg border-2 transition-all text-left',
+                                      'flex items-start gap-3 w-full p-3.5 rounded-xl border-2 transition-all duration-200 text-left group',
                                       isSelected
-                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/10'
+                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-500/15 shadow-sm'
                                         : 'border-surface-200 dark:border-surface-700 hover:border-primary-300 hover:bg-surface-50 dark:hover:bg-surface-800/50'
                                     )}
                                   >
                                     <div className={cn(
-                                      'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0',
-                                      poll.allowMultipleVotes ? 'rounded-sm' : 'rounded-full',
-                                      isSelected ? 'border-primary-500 bg-primary-500' : 'border-surface-300'
+                                      'w-5 h-5 border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all duration-200',
+                                      poll.allowMultipleVotes ? 'rounded-md' : 'rounded-full',
+                                      isSelected ? 'border-primary-500 bg-primary-500 scale-105' : 'border-surface-300 group-hover:border-primary-400'
                                     )}>
-                                      {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
+                                      {isSelected && (
+                                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      )}
                                     </div>
-                                    <span className="text-sm flex-1">{opt}</span>
-                                    {voteLoading === poll._id && <Loader2 className="w-4 h-4 animate-spin text-surface-400" />}
+                                    <div className="flex-1 min-w-0">
+                                      <span className={cn('text-sm', isSelected ? 'font-semibold text-primary-700 dark:text-primary-300' : '')}>{opt}</span>
+                                      {isSelected && <div className="text-[11px] text-primary-500 font-medium mt-0.5">Your vote</div>}
+                                    </div>
+                                    {isVoting && <Loader2 className="w-4 h-4 animate-spin text-primary-500 mt-0.5 shrink-0" />}
                                   </button>
                                 )}
                               </div>
@@ -270,7 +296,7 @@ export default function NoticesPage() {
                             {showResult ? 'Vote' : 'View Results'}
                           </button>
                           <span className="text-[10px] text-surface-400">
-                            {new Date(poll.endDate) < new Date() ? 'Closed' : `Ends ${new Date(poll.endDate).toLocaleDateString()}`}
+                            {isClosed ? 'Closed' : `Ends ${new Date(poll.endDate).toLocaleDateString()}`}
                           </span>
                         </div>
                       </div>
@@ -404,9 +430,9 @@ export default function NoticesPage() {
                   ))}
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={pollForm.allowMultipleVotes} onChange={(e) => setPollForm({ ...pollForm, allowMultipleVotes: e.target.checked })} className="rounded" />
-                Allow selecting multiple options
+                Allow Multiple Answers
               </label>
               <div className="flex gap-3">
                 <button onClick={() => setShowPollForm(false)} className="btn-secondary flex-1">Cancel</button>

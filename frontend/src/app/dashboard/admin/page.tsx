@@ -2,8 +2,9 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Users, Camera, AlertTriangle, FileText, Bell, CreditCard, BarChart3, Shield, Activity, TrendingUp, Clock, CheckCircle, XCircle, MessageSquare, Send, UserPlus, Search } from 'lucide-react';
+import { Users, Camera, AlertTriangle, FileText, Bell, CreditCard, BarChart3, Shield, Activity, TrendingUp, Clock, CheckCircle, XCircle, MessageSquare, Send, UserPlus, Search, Package } from 'lucide-react';
 import { cn, formatDateTime, timeAgo } from '@/lib/utils';
+import Link from 'next/link';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import SOSEmergency from '@/components/dashboard/SOSEmergency';
 import NotificationComposer from '@/components/dashboard/NotificationComposer';
@@ -29,11 +30,13 @@ export default function AdminDashboard() {
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryPending, setRecoveryPending] = useState(0);
   const [skillAnalytics, setSkillAnalytics] = useState<any>(null);
+  const [lostFoundStats, setLostFoundStats] = useState<any>({});
 
   useEffect(() => {
     api.get('/analytics/dashboard').then((res) => setData(res.data)).finally(() => setLoading(false));
     api.get('/recovery-requests').then((res) => setRecoveryPending((res.data?.requests || []).filter((r: any) => r.status === 'Pending').length)).catch(() => {});
     api.get('/skills/analytics').then((res) => setSkillAnalytics(res.data?.data || null)).catch(() => {});
+    api.get('/lost-found/stats').then((res) => setLostFoundStats(res.data?.data || {})).catch(() => {});
   }, []);
 
   if (loading) return <DashboardLayout><div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div></DashboardLayout>;
@@ -132,6 +135,15 @@ export default function AdminDashboard() {
               <p className="text-xs text-surface-400">Manage credential recovery</p>
             </div>
           </button>
+          <Link href="/lost-and-found" className="glass-card p-4 flex items-center gap-3 hover:shadow-xl transition-all">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
+              <Package className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold">Lost & Found <span className="text-xs font-normal text-surface-400">({lostFoundStats.openLost || 0} open)</span></p>
+              <p className="text-xs text-surface-400">Manage lost & found items</p>
+            </div>
+          </Link>
         </div>
 
         <AIInsights />
@@ -262,6 +274,31 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="glass-card p-6">
+          <h3 className="section-title mb-4">Lost & Found Overview</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10">
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{lostFoundStats.openLost || 0}</p>
+              <p className="text-xs text-surface-500 mt-1">Open Lost Items</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-secondary-50 dark:bg-secondary-500/10">
+              <p className="text-2xl font-bold text-secondary-600 dark:text-secondary-400">{lostFoundStats.recoveredLost || 0}</p>
+              <p className="text-xs text-surface-500 mt-1">Recovered</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-warning-50 dark:bg-warning-500/10">
+              <p className="text-2xl font-bold text-warning-600 dark:text-warning-400">{lostFoundStats.pendingMatches || 0}</p>
+              <p className="text-xs text-surface-500 mt-1">Pending Claims</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-primary-50 dark:bg-primary-500/10">
+              <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{(lostFoundStats.totalFound || 0) + (lostFoundStats.totalLost || 0)}</p>
+              <p className="text-xs text-surface-500 mt-1">Total Items</p>
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+            <Link href="/lost-and-found" className="text-sm text-primary-600 dark:text-primary-400 font-medium hover:underline">Manage Lost & Found →</Link>
           </div>
         </div>
       </div>

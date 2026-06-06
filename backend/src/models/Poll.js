@@ -1,7 +1,7 @@
 const { db, buildWhere, buildOrder, aliasRow, aliasRows } = require('./dbHelpers');
 
 const TABLE = 'polls';
-const COLS = 'id AS _id, title, description, category, startDate, endDate, options, allowMultipleVotes, isActive, createdBy, createdAt, updatedAt';
+const COLS = 'id AS _id, title, description, category, startDate, endDate, options, allowMultipleVotes, allowVoteChange, allowVoteRemoval, isActive, createdBy, createdAt, updatedAt';
 
 const Poll = {
   async findById(id) { const rows = await db.query(`SELECT ${COLS} FROM ${TABLE} WHERE id = ?`, [id]); const p = aliasRow(rows[0]); if (p && typeof p.options === 'string') p.options = JSON.parse(p.options); return p; },

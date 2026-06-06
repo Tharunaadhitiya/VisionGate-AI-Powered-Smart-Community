@@ -3,7 +3,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Camera, AlertTriangle, Shield, CheckCircle, Clock, Activity, MessageSquare, Phone, MapPin, LogOut, Car } from 'lucide-react';
+import { Users, Camera, AlertTriangle, Shield, CheckCircle, Clock, Activity, MessageSquare, Phone, MapPin, LogOut, Car, Package } from 'lucide-react';
 import { cn, timeAgo, getStatusColor } from '@/lib/utils';
 import SurveillancePanel from '@/components/surveillance/SurveillancePanel';
 import SOSEmergency from '@/components/dashboard/SOSEmergency';
@@ -25,6 +25,7 @@ export default function SecurityDashboard() {
   const [totalActive, setTotalActive] = useState(0);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
+  const [lostFoundStats, setLostFoundStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
   const [showCameras, setShowCameras] = useState(false);
@@ -41,11 +42,13 @@ export default function SecurityDashboard() {
       api.get('/visitors?status=entered&limit=50'),
       api.get('/alerts?limit=5&status=new'),
       api.get('/analytics/security'),
-    ]).then(([visitorsRes, alertsRes, analyticsRes]) => {
+      api.get('/lost-found/stats'),
+    ]).then(([visitorsRes, alertsRes, analyticsRes, lostRes]) => {
       setActiveVisitors(visitorsRes.data.visitors || []);
       setTotalActive(visitorsRes.data.total || 0);
       setAlerts(alertsRes.data.alerts || []);
       setStats(analyticsRes.data || {});
+      setLostFoundStats(lostRes.data?.data || {});
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -69,6 +72,7 @@ export default function SecurityDashboard() {
     { label: 'Suspicious', value: stats.suspiciousCount || 0, icon: AlertTriangle, color: 'text-danger-500', bg: 'bg-danger-50 dark:bg-danger-500/10' },
     { label: 'Emergency Alerts', value: stats.emergencyCount || 0, icon: Shield, color: 'text-warning-500', bg: 'bg-warning-50 dark:bg-warning-500/10' },
     { label: 'Cameras Active', value: '7/8', icon: Camera, color: 'text-secondary-500', bg: 'bg-secondary-50 dark:bg-secondary-500/10' },
+    { label: 'Lost Items', value: lostFoundStats.openLost || 0, icon: Package, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
   ];
 
   return (

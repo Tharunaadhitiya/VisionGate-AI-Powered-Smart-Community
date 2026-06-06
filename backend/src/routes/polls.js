@@ -9,6 +9,10 @@ const { notifyRole } = require('../services/notificationHelper');
 
 const router = express.Router();
 
+const emitUpdate = (io, poll) => {
+  io.to('all').emit('poll:updated', poll);
+};
+
 router.get('/', authenticate, async (req, res) => {
   try {
     const now = new Date();
@@ -19,6 +23,8 @@ router.get('/', authenticate, async (req, res) => {
       p.totalVotes = votes.reduce((sum, v) => sum + v.count, 0);
       p.voteDistribution = {};
       for (const v of votes) p.voteDistribution[v.optionIndex] = v.count;
+      const myVotes = await PollVote.findByPollAndUser(p._id, req.userId);
+      p.myVotes = myVotes.map((v) => v.optionIndex);
     }
     res.json({ success: true, data: { polls: active } });
   } catch (error) {
@@ -54,7 +60,7 @@ router.post('/', authenticate, authorize('admin'), [
   }
 });
 
-router.post('/:id/vote', authenticate, authorize('resident'), [
+router.post('/:id/vote', authenticate, [
   body('optionIndex').isInt({ min: 0 }),
 ], validate, async (req, res) => {
   try {
@@ -62,18 +68,44 @@ router.post('/:id/vote', authenticate, authorize('resident'), [
     if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
     if (new Date(poll.endDate) < new Date()) return res.status(400).json({ success: false, message: 'Poll has ended' });
     if (new Date(poll.startDate) > new Date()) return res.status(400).json({ success: false, message: 'Poll has not started' });
-    const existing = await PollVote.findOne({ pollId: parseInt(req.params.id), userId: req.userId, optionIndex: req.body.optionIndex });
-    if (existing) return res.status(400).json({ success: false, message: 'Already voted for this option' });
-    const vote = await PollVote.create({ pollId: parseInt(req.params.id), userId: req.userId, optionIndex: req.body.optionIndex });
-    const voteCount = await PollVote.countDocuments({ pollId: parseInt(req.params.id) });
-    res.json({ success: true, message: 'Vote cast', data: { vote, totalVotes: voteCount } });
+    if (req.body.optionIndex >= (poll.options || []).length) return res.status(400).json({ success: false, message: 'Invalid option' });
+
+    const pollId = parseInt(req.params.id);
+    const userId = req.userId;
+    const optionIndex = req.body.optionIndex;
+    const io = req.app.get('io');
+
+    if (poll.allowMultipleVotes) {
+      const existing = await PollVote.findOne({ pollId, userId, optionIndex });
+      if (existing) {
+        await PollVote.deleteByPollUserAndOption(pollId, userId, optionIndex);
+      } else {
+        await PollVote.create({ pollId, userId, optionIndex });
+      }
+    } else {
+      const myVotes = await PollVote.findByPollAndUser(pollId, userId);
+      const alreadySelected = myVotes.find((v) => v.optionIndex === optionIndex);
+      if (alreadySelected) {
+        await PollVote.deleteByPollAndUser(pollId, userId);
+      } else {
+        if (myVotes.length > 0) await PollVote.deleteByPollAndUser(pollId, userId);
+        await PollVote.create({ pollId, userId, optionIndex });
+      }
+    }
+
+    const votes = await PollVote.countByPoll(pollId);
+    poll.totalVotes = votes.reduce((sum, v) => sum + v.count, 0);
+    poll.voteDistribution = {};
+    for (const v of votes) poll.voteDistribution[v.optionIndex] = v.count;
+    emitUpdate(io, poll);
+    res.json({ success: true, message: 'Vote updated', data: { poll } });
   } catch (error) {
     logger.error('Vote error:', error);
     res.status(500).json({ success: false, message: 'Failed to cast vote' });
   }
 });
 
-router.get('/:id/results', authenticate, authorize('admin'), async (req, res) => {
+router.get('/:id/results', authenticate, async (req, res) => {
   try {
     const poll = await Poll.findById(req.params.id);
     if (!poll) return res.status(404).json({ success: false, message: 'Poll not found' });
@@ -81,8 +113,8 @@ router.get('/:id/results', authenticate, authorize('admin'), async (req, res) =>
     const totalVotes = votes.reduce((sum, v) => sum + v.count, 0);
     const distribution = {};
     for (const v of votes) distribution[v.optionIndex] = v.count;
-    const totalResidents = (await PollVote.find({ pollId: parseInt(req.params.id) })).length;
-    res.json({ success: true, data: { poll, distribution, totalVotes, totalResidents } });
+    const uniqueVoters = (await PollVote.find({ pollId: parseInt(req.params.id) })).length;
+    res.json({ success: true, data: { poll, distribution, totalVotes, totalVoters: uniqueVoters } });
   } catch (error) {
     logger.error('Poll results error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch results' });

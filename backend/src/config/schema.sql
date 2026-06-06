@@ -411,6 +411,8 @@ CREATE TABLE IF NOT EXISTS polls (
   endDate DATETIME NOT NULL,
   options JSON NOT NULL,
   allowMultipleVotes BOOLEAN DEFAULT false,
+  allowVoteChange BOOLEAN DEFAULT false,
+  allowVoteRemoval BOOLEAN DEFAULT false,
   isActive BOOLEAN DEFAULT true,
   createdBy INT NOT NULL,
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -546,15 +548,17 @@ CREATE TABLE IF NOT EXISTS lost_items (
   imageUrl TEXT,
   color VARCHAR(100),
   brand VARCHAR(255),
-  status ENUM('open','matched','closed') DEFAULT 'open',
+  status ENUM('open','matched','closed','recovered') DEFAULT 'open',
   reportedBy INT NOT NULL,
+  claimedBy INT DEFAULT NULL,
+  confirmedById INT DEFAULT NULL,
   matchedItemId INT,
   matchScore DECIMAL(5,2),
   resolvedAt DATETIME,
+  recoveredAt DATETIME DEFAULT NULL,
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (reportedBy) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (matchedItemId) REFERENCES found_items(id) ON DELETE SET NULL,
   INDEX idx_status (status),
   INDEX idx_reportedBy (reportedBy),
   INDEX idx_dateLost (dateLost)
@@ -576,10 +580,13 @@ CREATE TABLE IF NOT EXISTS found_items (
   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (reportedBy) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (matchedItemId) REFERENCES lost_items(id) ON DELETE SET NULL,
   INDEX idx_status (status),
   INDEX idx_reportedBy (reportedBy)
 ) ENGINE=InnoDB;
+
+ALTER TABLE lost_items ADD FOREIGN KEY (matchedItemId) REFERENCES found_items(id) ON DELETE SET NULL;
+ALTER TABLE lost_items ADD FOREIGN KEY (claimedBy) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE found_items ADD FOREIGN KEY (matchedItemId) REFERENCES lost_items(id) ON DELETE SET NULL;
 
 -- Rent Configuration
 CREATE TABLE IF NOT EXISTS rent_configurations (
