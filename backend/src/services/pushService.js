@@ -184,7 +184,7 @@ async function shouldNotify(userId, notificationType) {
 async function getNotificationHistory(userId, limit = 50, offset = 0) {
   const rows = await db.query(
     `SELECT * FROM notification_history WHERE userId = ? ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
-    [userId, limit, offset]
+    [userId, String(limit), String(offset)]
   );
   const countResult = await db.query(
     `SELECT COUNT(*) AS total FROM notification_history WHERE userId = ?`,

@@ -114,7 +114,7 @@ ALTER TABLE visitors MODIFY COLUMN status ENUM('pending','approved','rejected','
 -- Alerts
 CREATE TABLE IF NOT EXISTS alerts (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  type ENUM('suspicious_activity','unauthorized_access','emergency_sos','fire_smoke','weapon_detected','intrusion','loitering','crowd_density','general') NOT NULL,
+  type ENUM('suspicious_activity','unauthorized_access','emergency_sos','fire_smoke','weapon_detected','intrusion','loitering','crowd_density','general','mobile_detection_human','mobile_detection_vehicle','mobile_detection_motion') NOT NULL,
   severity ENUM('low','medium','high','critical') DEFAULT 'medium',
   title VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,

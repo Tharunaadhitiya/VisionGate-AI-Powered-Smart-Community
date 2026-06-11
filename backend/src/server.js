@@ -70,7 +70,7 @@ const startServer = async (retries = 3) => {
   server.listen(config.port, () => {
     logger.info(`VisionGate server running on port ${config.port}`);
     logger.info(`Environment: ${config.nodeEnv}`);
-    logger.info(`API: http://localhost:${config.port}/api/health`);
+    logger.info(`API: /api/health on port ${config.port}`);
   });
 };
 
