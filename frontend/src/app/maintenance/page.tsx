@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { CreditCard, CheckCircle, Clock, AlertCircle, DollarSign, Home, Banknote } from 'lucide-react';
 import { cn, getStatusColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const formatDate = (date: string) => {
   if (!date) return '';
@@ -62,7 +64,7 @@ export default function MaintenancePage() {
         transactionId: 'TXN' + Date.now(),
       });
       toast.success('Payment successful!');
-      setPayments((prev) => prev.map((p) => p._id === selectedPayment._id ? { ...p, status: 'paid', paidAt: new Date().toISOString() } : p));
+      setPayments((prev) => prev.map((p) => p._id === selectedPayment._id ? { ...p, status: 'paid', paidAt: new Date().toISOString(), paymentMethod, transactionId: 'TXN' + Date.now() } : p));
       if (res.data?.receipt) setLastReceipt(res.data.receipt);
       setShowPaymentModal(false);
       setSelectedPayment(null);
@@ -80,36 +82,36 @@ export default function MaintenancePage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
+        <motion.div variants={fadeUp}>
           <h2 className="text-2xl font-bold">Maintenance & Dues</h2>
           <p className="text-surface-400 text-sm">View and pay all charges assigned to you</p>
-        </div>
+        </motion.div>
 
-        <div className="card-grid">
-          <div className="stat-card">
+        <motion.div variants={staggerContainer} className="card-grid">
+          <motion.div variants={staggerItem} className="stat-card">
             <p className="text-sm text-surface-400 mb-1">Total Due</p>
             <p className="text-2xl font-bold text-warning-500">₹{totalDue.toLocaleString()}</p>
-          </div>
-          <div className="stat-card">
+          </motion.div>
+          <motion.div variants={staggerItem} className="stat-card">
             <p className="text-sm text-surface-400 mb-1">Total Paid</p>
             <p className="text-2xl font-bold text-secondary-500">₹{totalPaid.toLocaleString()}</p>
-          </div>
-          <div className="stat-card">
+          </motion.div>
+          <motion.div variants={staggerItem} className="stat-card">
             <p className="text-sm text-surface-400 mb-1">Pending</p>
             <p className="text-2xl font-bold">{pendingCount}</p>
-          </div>
-          <div className="stat-card">
+          </motion.div>
+          <motion.div variants={staggerItem} className="stat-card">
             <p className="text-sm text-surface-400 mb-1">Overdue</p>
             <p className="text-2xl font-bold text-danger-500">{overdueCount}</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>
         ) : payments.length === 0 ? (
-          <div className="glass-card p-12 text-center"><CreditCard className="w-12 h-12 mx-auto text-surface-300 mb-3" /><p className="text-surface-400">No charges assigned</p></div>
+          <div className="glass-card p-12 text-center"><CreditCard className="w-12 h-12 mx-auto text-surface-300 mb-3" /><p className="text-surface-400 text-lg font-medium mb-1">No payment history available</p><p className="text-surface-500 text-sm">Charges assigned to you will appear here</p></div>
         ) : (
-          <div className="space-y-3">
+          <motion.div variants={staggerContainer} className="space-y-3">
             {payments.map((p) => {
               const isOverdue = p.status === 'overdue';
               const isPaid = p.status === 'paid';
@@ -117,7 +119,7 @@ export default function MaintenancePage() {
               const TypeIcon = p.type === 'house_rent' ? Home : DollarSign;
               const typeLabel = p.title || p.type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Charge';
               return (
-                <div key={p._id} className="glass-card p-4 flex items-center justify-between">
+                <motion.div key={p._id} variants={staggerItem} whileHover={{ y: -2 }} className="glass-card p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center',
                       isPaid ? 'bg-secondary-50 dark:bg-secondary-500/10' :
@@ -132,6 +134,7 @@ export default function MaintenancePage() {
                       <p className="font-medium text-sm text-surface-900 dark:text-surface-100">{typeLabel}</p>
                       <p className="text-xs text-surface-500">Due: {formatDate(p.dueDate)}</p>
                       {isPaid && p.paidAt && <p className="text-xs text-secondary-500">Paid On: {formatDate(p.paidAt)}</p>}
+                      {isPaid && p.paymentMethod && <p className="text-xs text-surface-500 capitalize">via {p.paymentMethod.replace(/_/g, ' ')}{p.transactionId ? ` · ${p.transactionId}` : ''}</p>}
                       {isOverdue && <p className="text-xs text-danger-500 font-medium">Overdue</p>}
                     </div>
                   </div>
@@ -152,16 +155,16 @@ export default function MaintenancePage() {
                       <button onClick={() => handlePayClick(p)} className="btn-primary text-xs px-4 py-2">Pay Now</button>
                     )}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
 
       {showPaymentModal && selectedPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => { if (!processingPayment) { setShowPaymentModal(false); setSelectedPayment(null); } }}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden modal-elevated" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 border-b border-surface-200 dark:border-surface-700">
               <h3 className="text-lg font-bold">Confirm Payment</h3>
               <p className="text-sm text-surface-400">Review payment details before confirming</p>
@@ -205,7 +208,7 @@ export default function MaintenancePage() {
 
       {lastReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setLastReceipt(null)}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden modal-elevated" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 text-center border-b border-surface-200 dark:border-surface-700">
               <div className="w-14 h-14 rounded-full bg-secondary-100 dark:bg-secondary-500/20 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-7 h-7 text-secondary-500" />

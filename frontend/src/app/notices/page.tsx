@@ -7,6 +7,8 @@ import { useSocket } from '@/hooks/useSocket';
 import { Bell, Plus, Search, X, Calendar, Clock, AlertTriangle, Building2, Shield, Users, Megaphone, Trash2, CheckSquare, BarChart3, Vote, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const categories = ['general', 'maintenance', 'security', 'events', 'emergency'];
 const priorities = ['low', 'medium', 'high', 'emergency'];
@@ -144,7 +146,7 @@ export default function NoticesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Notice Board</h2>
             <p className="text-surface-400 text-sm">Community announcements, updates & polls</p>
@@ -155,9 +157,9 @@ export default function NoticesPage() {
               <button onClick={() => setShowNoticeForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> New Notice</button>
             </div>
           )}
-        </div>
+        </motion.div>
 
-        <div className="flex items-center gap-2">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input className="input-field pl-9 py-2 text-sm" placeholder="Search notices & polls..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -169,16 +171,16 @@ export default function NoticesPage() {
               </button>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>
         ) : (
           <div className="space-y-6">
             {emergencyNotices.length > 0 && (
-              <div className="space-y-4">
+              <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
                 {emergencyNotices.map((n) => (
-                  <div key={n._id} className="glass-card p-5 border-l-4 border-danger-500 bg-danger-50/10 dark:bg-danger-500/5">
+                  <motion.div variants={staggerItem} key={n._id} className="glass-card p-5 border-l-4 border-danger-500 bg-danger-50/10 dark:bg-danger-500/5">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -198,15 +200,15 @@ export default function NoticesPage() {
                         <button onClick={() => handleDeleteNotice(n._id)} className="p-1.5 rounded-lg hover:bg-danger-50 hover:text-danger-600 ml-2"><Trash2 className="w-3.5 h-3.5" /></button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
 
             {filteredPolls.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2"><Vote className="w-5 h-5 text-primary-500" /> Polls & Voting</h3>
-                <div className="space-y-4">
+                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
                   {filteredPolls.map((poll) => {
                     const options = poll.options || [];
                     const totalVotes = poll.totalVotes || 0;
@@ -216,7 +218,7 @@ export default function NoticesPage() {
                     const isClosed = new Date(poll.endDate) < new Date();
                     const isVoting = votingPolls[poll._id];
                     return (
-                      <div key={poll._id} className="glass-card p-5">
+                      <motion.div variants={staggerItem} key={poll._id} className="glass-card p-5">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -250,13 +252,14 @@ export default function NoticesPage() {
                                       <span className="text-xs text-surface-400">{count} ({pct}%)</span>
                                     </div>
                                     <div className="w-full h-2 bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden">
-                                      <div className={cn('h-full rounded-full transition-all duration-500', isSelected ? 'bg-primary-500' : 'bg-surface-400')} style={{ width: `${pct}%` }} />
+                                      <motion.div className={cn('h-full rounded-full transition-all duration-500', isSelected ? 'bg-primary-500' : 'bg-surface-400')} initial={{ width: 0 }} animate={{ width: `${pct}%` }} />
                                     </div>
                                   </div>
                                 ) : (
-                                  <button
+                                  <motion.button
                                     onClick={() => handleVote(poll._id, idx)}
                                     disabled={isClosed || isVoting}
+                                    whileTap={{ scale: 0.9 }}
                                     className={cn(
                                       'flex items-start gap-3 w-full p-3.5 rounded-xl border-2 transition-all duration-200 text-left group',
                                       isSelected
@@ -280,7 +283,7 @@ export default function NoticesPage() {
                                       {isSelected && <div className="text-[11px] text-primary-500 font-medium mt-0.5">Your vote</div>}
                                     </div>
                                     {isVoting && <Loader2 className="w-4 h-4 animate-spin text-primary-500 mt-0.5 shrink-0" />}
-                                  </button>
+                                  </motion.button>
                                 )}
                               </div>
                             );
@@ -299,10 +302,10 @@ export default function NoticesPage() {
                             {isClosed ? 'Closed' : `Ends ${new Date(poll.endDate).toLocaleDateString()}`}
                           </span>
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               </div>
             )}
 
@@ -312,11 +315,11 @@ export default function NoticesPage() {
                 <p className="text-surface-400">No notices or polls found</p>
               </div>
             ) : normalNotices.length > 0 && (
-              <div className="space-y-4">
+              <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
                 {normalNotices.map((n) => {
                   const Icon = categoryIcons[n.category] || Bell;
                   return (
-                    <div key={n._id} className="glass-card p-5">
+                    <motion.div variants={staggerItem} key={n._id} className="glass-card p-5">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -338,10 +341,10 @@ export default function NoticesPage() {
                           <button onClick={() => handleDeleteNotice(n._id)} className="p-1.5 rounded-lg hover:bg-danger-50 hover:text-danger-600 ml-2"><Trash2 className="w-3.5 h-3.5" /></button>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             )}
           </div>
         )}

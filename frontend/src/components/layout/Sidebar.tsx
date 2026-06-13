@@ -6,11 +6,12 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   Home, Users, Shield, Bell, AlertTriangle, FileText, CreditCard,
   Calendar, Camera, BarChart3, MessageSquare, LogOut,
-  X, Menu,   BookUser, Megaphone, Bug, Package, Search, Briefcase,
+  X, Menu,   BookUser, Megaphone, Bug, Package, Search, Briefcase, Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 import { MessageSquareText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/hooks/useTheme';
 
 const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = {
   admin: [
@@ -27,6 +28,7 @@ const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = 
     { href: '/packages', label: 'Packages', icon: Package },
     { href: '/lost-and-found', label: 'Lost & Found', icon: Search },
     { href: '/skills', label: 'Skills', icon: Briefcase },
+    { href: '/settings', label: 'Settings', icon: Settings },
   ],
   security: [
     { href: '/dashboard/security', label: 'Dashboard', icon: Home },
@@ -39,6 +41,7 @@ const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = 
     { href: '/notices', label: 'Notices', icon: Megaphone },
     { href: '/alerts', label: 'Alerts', icon: Bell },
     { href: '/inbox', label: 'Inbox', icon: MessageSquareText },
+    { href: '/settings', label: 'Settings', icon: Settings },
   ],
   resident: [
     { href: '/dashboard/resident', label: 'Dashboard', icon: Home },
@@ -54,6 +57,7 @@ const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = 
     { href: '/incidents', label: 'Incidents', icon: Bug },
     { href: '/alerts', label: 'Alerts', icon: Bell },
     { href: '/inbox', label: 'Inbox', icon: MessageSquareText },
+    { href: '/settings', label: 'Settings', icon: Settings },
   ],
 };
 
@@ -72,6 +76,8 @@ const itemVariants = {
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
+  const isContrastBlack = theme === 'contrast-black';
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const links = user ? roleLinks[user.role] || roleLinks.resident : [];
@@ -100,6 +106,7 @@ export default function Sidebar() {
 
       <aside className={cn(
         'fixed top-0 left-0 z-50 h-full w-64 glass-card-strong border-r border-surface-200/50 dark:border-surface-700/50 transform transition-transform duration-300 ease-out lg:translate-x-0',
+        isContrastBlack && 'dark:bg-surface-950/95',
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="flex flex-col h-full">
@@ -148,20 +155,26 @@ export default function Sidebar() {
                       {active && (
                         <motion.div
                           layoutId="sidebar-active"
-                          className="absolute inset-0 bg-primary-50 dark:bg-primary-500/10 rounded-xl"
+                          className={cn(
+                            'absolute inset-0 rounded-xl',
+                            isContrastBlack ? 'bg-primary-500/15' : 'bg-primary-50 dark:bg-primary-500/10'
+                          )}
                           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         />
                       )}
                       {active && (
                         <motion.div
                           layoutId="sidebar-glow"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full shadow-lg shadow-primary-500/50"
+                          className={cn(
+                            'absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full',
+                            isContrastBlack ? 'shadow-lg shadow-primary-500/70' : 'shadow-lg shadow-primary-500/50'
+                          )}
                           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         />
                       )}
                       <motion.div
-                        whileHover={{ scale: 1.15 }}
-                        whileTap={{ scale: 0.9 }}
+                        whileHover={{ x: 3 }}
+                        transition={{ duration: 0.12 }}
                         className={cn(
                           'relative z-10 w-5 h-5 flex items-center justify-center transition-colors duration-200',
                           active ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400 group-hover:text-surface-600 dark:group-hover:text-surface-300'
@@ -193,11 +206,7 @@ export default function Sidebar() {
                 <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
                   {user?.name?.charAt(0)?.toUpperCase()}
                 </div>
-                <motion.span
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 border-2 border-white dark:border-surface-900 rounded-full"
-                />
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 border-2 border-white dark:border-surface-900 rounded-full" />
               </motion.div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate text-surface-900 dark:text-surface-100">{user?.name}</p>

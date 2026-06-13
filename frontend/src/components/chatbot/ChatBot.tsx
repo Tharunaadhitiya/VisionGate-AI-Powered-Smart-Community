@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, User, Sparkles, MessageSquare, AlertTriangle, FileText, Home, Lightbulb, TrendingUp, Shield, Cpu, Search, X, Minimize2, Maximize2 } from 'lucide-react';
+import { Bot, Send, User, Sparkles, MessageSquare, AlertTriangle, FileText, Home, Lightbulb, TrendingUp, Shield, Cpu, Search, X, Minimize2, Maximize2, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -363,7 +363,12 @@ export default function ChatBot() {
 
   return (
     <>
-      <div style={getBubbleStyle()}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        style={getBubbleStyle()}
+      >
         <AnimatePresence>
           {showTooltip && !open && (
             <motion.div
@@ -373,7 +378,7 @@ export default function ChatBot() {
               className="px-3 py-1.5 rounded-xl bg-surface-900 dark:bg-surface-100 text-white dark:text-surface-900 text-xs font-medium shadow-lg whitespace-nowrap"
             >
               <div className="flex items-center gap-3">
-                <span>AI Assistant</span>
+                <span>Vision</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); resetPosition(); }}
                   className="text-[10px] text-primary-300 dark:text-primary-500 hover:text-primary-200 underline underline-offset-2"
@@ -395,10 +400,10 @@ export default function ChatBot() {
               className="glass-card border border-surface-200/50 dark:border-surface-700/50 shadow-lg rounded-2xl px-4 py-2 flex items-center gap-3 cursor-pointer"
               onClick={() => setMinimized(false)}
             >
-              <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center">
                 <Bot className="w-3 h-3 text-white" />
               </div>
-              <span className="text-xs font-medium text-surface-600 dark:text-surface-400">AI Assistant</span>
+              <span className="text-xs font-medium text-surface-600 dark:text-surface-400">Vision</span>
               <button onClick={(e) => { e.stopPropagation(); setOpen(false); setMinimized(false); }} className="p-0.5 rounded hover:bg-surface-100 dark:hover:bg-surface-800">
                 <X className="w-3 h-3 text-surface-400" />
               </button>
@@ -414,45 +419,25 @@ export default function ChatBot() {
           onPointerCancel={handlePointerCancel}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          whileHover={!isDragging ? { scale: 1.1 } : {}}
-          whileTap={!isDragging ? { scale: 0.9 } : {}}
+          whileHover={!isDragging ? { scale: 1.05 } : {}}
+          whileTap={!isDragging ? { scale: 0.95 } : {}}
           className={cn(
-            'relative w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 text-white shadow-2xl flex items-center justify-center transition-shadow duration-300',
-            isDragging ? 'cursor-grabbing shadow-primary-500/70 shadow-2xl scale-105' : 'cursor-grab',
+            'relative w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-700 text-white shadow-2xl flex items-center justify-center transition-shadow duration-300',
+            isDragging ? 'cursor-grabbing shadow-indigo-500/70 shadow-2xl scale-105' : 'cursor-grab',
             open && 'shadow-lg'
           )}
           style={{ touchAction: 'none' }}
         >
-          <motion.div
-            animate={open ? {} : { scale: [1, 1.05, 1] }}
-            transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-            className="absolute inset-0 rounded-full bg-gradient-to-br from-primary-400/20 to-transparent"
-          />
-          <motion.div
-            animate={open ? { opacity: 0 } : { opacity: [0.3, 0.6, 0.3], scale: [1, 1.15, 1] }}
-            transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-            className="absolute -inset-2 rounded-full bg-primary-500/20 blur-xl"
-          />
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400/20 to-transparent" />
           {open ? (
             <X className="w-6 h-6 relative z-10" />
           ) : (
-            <motion.div
-              className="relative z-10"
-              animate={{ y: [0, -3, 0] }}
-              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-            >
-              <Bot className="w-6 h-6" />
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
-                className="absolute -top-1 -right-1"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              </motion.div>
-            </motion.div>
+            <div className="relative z-10 flex items-center justify-center w-full h-full">
+              <Bot className="w-8 h-8 text-white" />
+            </div>
           )}
         </motion.button>
-      </div>
+      </motion.div>
 
       <AnimatePresence>
         {open && !minimized && (
@@ -475,14 +460,14 @@ export default function ChatBot() {
           >
             <div className="flex flex-col" style={{ width: `${panelDim.w}px`, height: `${panelDim.h}px` }}>
               <div className="flex items-center gap-3 px-4 py-3 border-b border-surface-100 dark:border-surface-800 shrink-0">
-                <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center">
+                <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm">AI Assistant</h3>
-                  <p className="text-[10px] text-surface-400">Powered by VisionGate AI</p>
+                  <h3 className="font-semibold text-sm">Vision</h3>
+                  <p className="text-[10px] text-indigo-400/70">{loading ? 'Vision is analyzing...' : 'AI-Powered Smart Assistant'}</p>
                 </div>
-                <Sparkles className="w-3.5 h-3.5 text-primary-400" />
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                 <button onClick={() => setMinimized(true)} className="p-1 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors" title="Minimize">
                   <Minimize2 className="w-3.5 h-3.5 text-surface-400" />
                 </button>

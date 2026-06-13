@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const config = {
-  port: process.env.PORT || 5000,
+  port: process.env.PORT || 5001,
   jwtSecret: process.env.JWT_SECRET || 'visiongate_jwt_secret_dev',
   jwtExpire: process.env.JWT_EXPIRE || '7d',
   aiServiceUrl: process.env.AI_SERVICE_URL || 'http://localhost:8000',

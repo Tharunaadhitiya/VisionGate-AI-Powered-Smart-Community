@@ -1,9 +1,10 @@
 'use client';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { Shield, Users, Camera, Bell, BarChart3, MessageSquare, ArrowRight, Star, Smartphone, Building2, Eye, AlertTriangle, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Shield, Users, Camera, Bell, BarChart3, MessageSquare, ArrowRight, Zap, Eye } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 const features = [
   { icon: Users, title: 'Smart Visitor Management', desc: 'AI-powered visitor verification with QR codes, OTP, and face recognition' },
@@ -22,14 +23,16 @@ const stats = [
 ];
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      router.push(`/dashboard/${user.role}`);
+    if (!loading && user) {
+      router.replace(`/dashboard/${user.role}`);
     }
-  }, [user, router]);
+  }, [user, loading, router]);
+
+  if (loading || user) return null;
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
@@ -48,64 +51,72 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="pt-32 pb-20 px-4">
+      <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="pt-32 pb-20 px-4">
         <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 dark:bg-primary-500/10 rounded-full text-sm text-primary-700 dark:text-primary-400 font-medium mb-6">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-50 dark:bg-primary-500/10 rounded-full text-sm text-primary-700 dark:text-primary-400 font-medium mb-6">
             <Zap className="w-4 h-4" /> AI-Powered Smart Infrastructure
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+          </motion.div>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
             Smart Security for<br />
             <span className="text-gradient">Modern Communities</span>
-          </h1>
-          <p className="text-xl text-surface-500 dark:text-surface-400 max-w-2xl mx-auto mb-10">
+          </motion.h1>
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-xl text-surface-500 dark:text-surface-400 max-w-2xl mx-auto mb-10">
             AI-powered residential community management with intelligent surveillance, smart visitor management, and predictive analytics.
-          </p>
-          <div className="flex items-center justify-center gap-4">
+          </motion.p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex items-center justify-center gap-4">
             <Link href="/register" className="btn-primary text-lg px-8 py-3">
               Get Started <ArrowRight className="w-5 h-5" />
             </Link>
             <Link href="/login" className="btn-secondary text-lg px-8 py-3">
               Sign In
             </Link>
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="py-16 px-4">
+      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat) => (
-              <div key={stat.label} className="glass-card p-6 text-center">
+            {stats.map((stat, i) => (
+              <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="glass-card p-6 text-center">
                 <div className="text-3xl font-bold text-gradient mb-1">{stat.value}</div>
                 <div className="text-sm text-surface-400">{stat.label}</div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="py-20 px-4">
+      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4">Intelligent Features</h2>
-          <p className="text-surface-400 text-center mb-12 max-w-xl mx-auto">AI-powered tools that transform how residential communities are managed and secured.</p>
+          <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl font-bold text-center mb-4">Intelligent Features</motion.h2>
+          <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-surface-400 text-center mb-12 max-w-xl mx-auto">AI-powered tools that transform how residential communities are managed and secured.</motion.p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => {
+            {features.map((feature, i) => {
               const Icon = feature.icon;
               return (
-                <div key={feature.title} className="glass-card p-6 hover:-translate-y-1 transition-all duration-300">
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(99,102,241,0.2)' }}
+                  className="glass-card p-6 cursor-default"
+                >
                   <div className="w-12 h-12 bg-primary-50 dark:bg-primary-500/10 rounded-xl flex items-center justify-center mb-4">
                     <Icon className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                   <p className="text-sm text-surface-400">{feature.desc}</p>
-                </div>
+                </motion.div>
               );
             })}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="py-20 px-4 bg-surface-100 dark:bg-surface-900/50">
+      <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="py-20 px-4 bg-surface-100 dark:bg-surface-900/50">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
@@ -126,7 +137,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       <footer className="py-12 px-4 border-t border-surface-200 dark:border-surface-800">
         <div className="max-w-6xl mx-auto text-center text-sm text-surface-400">

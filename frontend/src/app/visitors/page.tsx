@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Users, Search, Plus, CheckCircle, XCircle, Clock, Phone, Car, User, Home, LogIn, LogOut, Building2, ChevronDown, Loader2, Send, ShieldAlert, BarChart3 } from 'lucide-react';
 import { cn, formatDateTime, timeAgo } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-warning-100 text-warning-600 dark:bg-warning-500/20 dark:text-warning-400',
@@ -190,7 +192,7 @@ export default function VisitorsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">
               {role === 'security' ? 'Gate Entry Management' : role === 'resident' ? 'Visitor Requests' : 'Visitor Monitoring'}
@@ -202,10 +204,10 @@ export default function VisitorsPage() {
           {role === 'security' && (
             <button onClick={() => setShowForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> New Visitor Request</button>
           )}
-        </div>
+        </motion.div>
 
         {role === 'admin' && summary && (
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[{ label: 'Pending', value: summary.pending, color: 'text-warning-500' },
               { label: 'Approved', value: summary.approved, color: 'text-success-500' },
               { label: 'Rejected', value: summary.rejected, color: 'text-danger-500' },
@@ -213,12 +215,12 @@ export default function VisitorsPage() {
               { label: 'Exited', value: summary.exited, color: 'text-surface-500' },
               { label: 'Today', value: summary.todayCount, color: 'text-primary-500' },
             ].map((s) => (
-              <div key={s.label} className="glass-card p-3 text-center">
+              <motion.div variants={staggerItem} key={s.label} className="glass-card p-3 text-center">
                 <p className={cn('text-2xl font-bold', s.color)}>{s.value ?? 0}</p>
                 <p className="text-xs text-surface-400">{s.label}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         <div className="flex items-center gap-2">
@@ -246,9 +248,9 @@ export default function VisitorsPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-3">
             {filtered.map((v) => (
-              <div key={v._id} className="glass-card p-4 hover:shadow-lg transition-shadow">
+              <motion.div variants={staggerItem} key={v._id} className="glass-card p-4 hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-md">
@@ -283,9 +285,9 @@ export default function VisitorsPage() {
                   </div>
                   <div className="shrink-0 ml-2">{renderActions(v)}</div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 

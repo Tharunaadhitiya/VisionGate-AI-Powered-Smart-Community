@@ -7,6 +7,8 @@ import { useSocket } from '@/hooks/useSocket';
 import { Search, Plus, X, AlertTriangle, CheckCircle, Percent, Loader2, MapPin, Calendar, User, Phone, Mail, Image, Hand, Shield, Archive, RefreshCw, Eye } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 type TabType = 'lost' | 'found';
 
@@ -173,7 +175,7 @@ export default function LostFoundPage() {
     const claimer = item.claimedBy;
 
     return (
-      <div key={item._id} className="glass-card p-4">
+      <motion.div key={item._id} variants={staggerItem} whileHover={{ y: -4, boxShadow: '0 12px 24px -8px rgba(0,0,0,0.12)' }} className="glass-card p-4">
         {renderImage(item.imageUrl, item.itemName)}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -225,14 +227,14 @@ export default function LostFoundPage() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
   const renderFoundCard = (item: any) => {
     const finder = item.reportedBy;
     return (
-      <div key={item._id} className="glass-card p-4">
+      <motion.div key={item._id} variants={staggerItem} whileHover={{ y: -4, boxShadow: '0 12px 24px -8px rgba(0,0,0,0.12)' }} className="glass-card p-4">
         {renderImage(item.imageUrl, item.itemName)}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -268,7 +270,7 @@ export default function LostFoundPage() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -283,20 +285,20 @@ export default function LostFoundPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible">
             <h2 className="text-2xl font-bold">Lost & Found</h2>
             <p className="text-surface-400 text-sm">Community-wide lost and found items board</p>
-          </div>
+          </motion.div>
           <div className="flex items-center gap-2">
             <button onClick={fetchItems} className="btn-secondary text-sm flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Refresh</button>
           </div>
         </div>
 
-        <div className="card-grid">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="card-grid">
           {statCards.map((card) => {
             const Icon = card.icon;
             return (
-              <div key={card.label} className="stat-card">
+              <motion.div key={card.label} variants={staggerItem} className="stat-card">
                 <div className="flex items-center justify-between mb-3">
                   <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', card.bg)}>
                     <Icon className={cn('w-5 h-5', card.color)} />
@@ -304,10 +306,10 @@ export default function LostFoundPage() {
                 </div>
                 <p className="text-2xl font-bold">{card.value}</p>
                 <p className="text-sm text-surface-400">{card.label}</p>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
         <div className="flex gap-2 border-b border-surface-200 dark:border-surface-700 pb-2 flex-wrap">
           <button onClick={() => setTab('lost')} className={cn('px-4 py-2 text-sm font-medium rounded-lg transition-colors', tab === 'lost' ? 'bg-danger-50 dark:bg-danger-500/10 text-danger-600 dark:text-danger-400' : 'text-surface-400 hover:text-surface-600')}>
@@ -371,7 +373,7 @@ export default function LostFoundPage() {
           <input className="input-field pl-9 text-sm w-full" placeholder="Search items..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
-        <div className={cn('grid gap-4', tab === 'lost' ? (filteredLost.length > 0 ? 'lg:grid-cols-2 xl:grid-cols-3' : '') : (filteredFound.length > 0 ? 'lg:grid-cols-2 xl:grid-cols-3' : ''))}>
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className={cn('grid gap-4', tab === 'lost' ? (filteredLost.length > 0 ? 'lg:grid-cols-2 xl:grid-cols-3' : '') : (filteredFound.length > 0 ? 'lg:grid-cols-2 xl:grid-cols-3' : ''))}>
           {loading ? (
             <div className="col-span-full flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /></div>
           ) : tab === 'lost' ? (
@@ -383,7 +385,7 @@ export default function LostFoundPage() {
               <div className="col-span-full text-center py-12 text-surface-400"><Search className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm">No found items reported</p></div>
             ) : filteredFound.map(renderFoundCard)
           )}
-        </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   );

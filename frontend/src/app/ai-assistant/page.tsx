@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'framer-motion';
+import { staggerContainer, staggerItem, messageBubble } from '@/lib/animation';
 
 const quickActions = [
   { icon: MessageSquare, label: 'My recent visitors', color: 'text-primary-500', bg: 'bg-primary-50 dark:bg-primary-500/10' },
@@ -82,12 +83,12 @@ export default function AIAssistantPage() {
             </div>
             <span className="font-semibold text-sm">AI Capabilities</span>
           </div>
-          <div className="space-y-2 flex-1">
-            {features.map((f, i) => {
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-2 flex-1">
+            {features.map((f) => {
               const Icon = f.icon;
               return (
-                <motion.button key={f.label}
-                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                <motion.button key={f.label} variants={staggerItem}
+                  whileHover={{ scale: 1.02 }}
                   onClick={() => sendMessage(f.label)}
                   className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors text-left"
                 >
@@ -101,7 +102,7 @@ export default function AIAssistantPage() {
                 </motion.button>
               );
             })}
-          </div>
+          </motion.div>
           <div className="p-3 rounded-xl bg-gradient-to-br from-primary-500/10 to-primary-700/5 border border-primary-500/20">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-3.5 h-3.5 text-primary-500" />
@@ -131,8 +132,9 @@ export default function AIAssistantPage() {
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div key={msg.id}
-                  initial={{ opacity: 0, y: 10, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  variants={messageBubble}
+                  initial="hidden"
+                  animate="visible"
                   className={cn('flex gap-2', msg.role === 'user' && 'flex-row-reverse')}>
                   <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0',
                     msg.role === 'bot' ? 'bg-primary-100 dark:bg-primary-500/20' : 'bg-surface-100 dark:bg-surface-800')}>

@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { FileText, Plus, Clock, CheckCircle, AlertCircle, Brain, Building2, Edit3 } from 'lucide-react';
 import { cn, timeAgo, getStatusColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const categories = ['plumbing', 'electrical', 'cleaning', 'noise', 'security', 'parking', 'pest_control', 'structural', 'other'];
 
@@ -46,21 +48,21 @@ export default function ComplaintsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Complaints</h2>
             <p className="text-surface-400 text-sm">Submit and track maintenance issues</p>
           </div>
           <button onClick={() => setShowForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> New Complaint</button>
-        </div>
+        </motion.div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex gap-2 overflow-x-auto pb-2">
           {filters.map((f) => (
             <button key={f} onClick={() => setFilter(f)} className={cn('px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors', filter === f ? 'bg-primary-600 text-white' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200')}>
               {f || 'All'}
             </button>
           ))}
-        </div>
+        </motion.div>
 
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>
@@ -70,9 +72,9 @@ export default function ComplaintsPage() {
             <p className="text-surface-400">No complaints found</p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid gap-4">
             {complaints.map((c) => (
-              <div key={c._id} className="glass-card p-5">
+              <motion.div variants={staggerItem} whileHover={{ y: -2 }} key={c._id} className="glass-card p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -113,9 +115,9 @@ export default function ComplaintsPage() {
                     }} className="btn-ghost text-xs ml-2">Rate</button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 

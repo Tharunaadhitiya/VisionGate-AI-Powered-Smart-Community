@@ -36,7 +36,21 @@ export default function NotificationPanel({
   onViewDetail?: (n: any) => void;
 }) {
   return (
-    <div className="absolute right-4 top-16 w-80 glass-card-strong border border-surface-200/50 dark:border-surface-700/50 shadow-2xl z-50 overflow-hidden">
+    <motion.div
+      initial={{ x: '100%', opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="absolute right-4 top-16 w-80 glass-card-strong border border-surface-200/50 dark:border-surface-700/50 shadow-2xl z-50 overflow-hidden"
+    >
+      <style jsx>{`
+        @keyframes progress-shrink {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        .notification-dismiss-progress {
+          animation: progress-shrink 5s linear forwards;
+        }
+      `}</style>
       <div className="flex items-center justify-between p-3 border-b border-surface-100 dark:border-surface-800">
         <h3 className="text-sm font-semibold">Notifications</h3>
         <div className="flex gap-2">
@@ -95,6 +109,6 @@ export default function NotificationPanel({
           </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

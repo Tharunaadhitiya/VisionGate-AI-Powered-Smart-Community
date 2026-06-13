@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
 import { useAuth } from '@/hooks/useAuth';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 import { Bell, AlertTriangle, Shield, Eye, CheckCircle, Camera, Flame, Users, AlertCircle, Plus, Send, X } from 'lucide-react';
 import { cn, timeAgo, formatDateTime, getStatusColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
@@ -82,7 +84,7 @@ export default function AlertsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Alerts & Notifications</h2>
             <p className="text-surface-400 text-sm">Security alerts and emergency notifications</p>
@@ -91,7 +93,7 @@ export default function AlertsPage() {
             {showCreate ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {showCreate ? 'Cancel' : 'New Alert'}
           </button>
-        </div>
+        </motion.div>
 
         {showCreate && (
           <form onSubmit={handleCreate} className="glass-card p-5 space-y-4 border border-primary-200 dark:border-primary-800">
@@ -139,13 +141,13 @@ export default function AlertsPage() {
           </form>
         )}
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <motion.div variants={fadeUp} className="flex gap-2 overflow-x-auto pb-2">
           {filters.map((f) => (
             <button key={f} onClick={() => setFilter(f)} className={cn('px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors', filter === f ? 'bg-primary-600 text-white' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-200')}>
               {f || 'All'}
             </button>
           ))}
-        </div>
+        </motion.div>
 
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>
@@ -155,12 +157,12 @@ export default function AlertsPage() {
             <p className="text-surface-400">No alerts</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-4">
             {alerts.map((a) => {
               const Icon = alertIcons[a.type] || Bell;
               const sender = a.sender || a.createdBy;
               return (
-                <div key={a._id} className={cn('glass-card p-5 border-l-4', a.severity === 'critical' ? 'border-l-danger-500' : a.severity === 'high' ? 'border-l-warning-500' : 'border-l-primary-500')}>
+                <motion.div key={a._id} variants={staggerItem} className={cn('glass-card p-5 border-l-4', a.severity === 'critical' ? 'border-l-danger-500' : a.severity === 'high' ? 'border-l-warning-500' : 'border-l-primary-500')}>
                   <div className="flex items-start justify-between">
                     <div className="flex gap-3">
                       <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', a.severity === 'critical' ? 'bg-danger-50 dark:bg-danger-500/10 text-danger-500' : 'bg-warning-50 dark:bg-warning-500/10 text-warning-500')}>
@@ -183,10 +185,10 @@ export default function AlertsPage() {
                       {a.status === 'new' && <button onClick={() => handleAcknowledge(a._id)} className="btn-ghost text-xs"><Eye className="w-3.5 h-3.5" /> Acknowledge</button>}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
     </DashboardLayout>

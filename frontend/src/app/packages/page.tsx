@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Package, Search, Plus, Clock, CheckCircle, Building2, Truck, User, Home, Phone, Hash, FileText, Loader2 } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const STATUS_COLORS: Record<string, string> = {
   received: 'bg-warning-100 text-warning-600 dark:bg-warning-500/20 dark:text-warning-400',
@@ -68,10 +70,10 @@ export default function PackagesPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
+          <motion.div variants={fadeUp}>
             <h2 className="text-2xl font-bold">Package Management</h2>
             <p className="text-surface-400 text-sm">Track courier and parcel deliveries</p>
-          </div>
+          </motion.div>
           {(role === 'security' || role === 'admin') && (
             <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm flex items-center gap-2">
               <Plus className="w-4 h-4" /> Record Package
@@ -80,11 +82,11 @@ export default function PackagesPage() {
         </div>
 
         {stats && role === 'admin' && (
-          <div className="card-grid">
-            <div className="stat-card"><div className="flex items-center gap-3 mb-2"><Truck className="w-5 h-5 text-primary-500" /><p className="text-2xl font-bold">{stats.receivedToday}</p></div><p className="text-sm text-surface-400">Received Today</p></div>
-            <div className="stat-card"><div className="flex items-center gap-3 mb-2"><Clock className="w-5 h-5 text-warning-500" /><p className="text-2xl font-bold">{stats.pendingPickups}</p></div><p className="text-sm text-surface-400">Pending Pickups</p></div>
-            <div className="stat-card"><div className="flex items-center gap-3 mb-2"><CheckCircle className="w-5 h-5 text-success-500" /><p className="text-2xl font-bold">{stats.delivered}</p></div><p className="text-sm text-surface-400">Delivered</p></div>
-          </div>
+          <motion.div variants={staggerContainer} className="card-grid">
+            <motion.div variants={staggerItem} className="stat-card"><div className="flex items-center gap-3 mb-2"><Truck className="w-5 h-5 text-primary-500" /><p className="text-2xl font-bold">{stats.receivedToday}</p></div><p className="text-sm text-surface-400">Received Today</p></motion.div>
+            <motion.div variants={staggerItem} className="stat-card"><div className="flex items-center gap-3 mb-2"><Clock className="w-5 h-5 text-warning-500" /><p className="text-2xl font-bold">{stats.pendingPickups}</p></div><p className="text-sm text-surface-400">Pending Pickups</p></motion.div>
+            <motion.div variants={staggerItem} className="stat-card"><div className="flex items-center gap-3 mb-2"><CheckCircle className="w-5 h-5 text-success-500" /><p className="text-2xl font-bold">{stats.delivered}</p></div><p className="text-sm text-surface-400">Delivered</p></motion.div>
+          </motion.div>
         )}
 
         {showForm && (role === 'security' || role === 'admin') && (
@@ -132,14 +134,14 @@ export default function PackagesPage() {
           </select>
         </div>
 
-        <div className="space-y-3">
+        <motion.div variants={staggerContainer} className="space-y-3">
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /></div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-surface-400"><Package className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm">No packages found</p></div>
           ) : (
             filtered.map(p => (
-              <div key={p._id} className="glass-card p-4">
+              <motion.div key={p._id} variants={staggerItem} whileHover={{ y: -2, boxShadow: '0 8px 20px -6px rgba(0,0,0,0.1)' }} className="glass-card p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 flex-1">
                     <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
@@ -169,10 +171,10 @@ export default function PackagesPage() {
                     </button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
-        </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   );

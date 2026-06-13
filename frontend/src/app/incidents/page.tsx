@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Shield, AlertTriangle, Plus, Search, Image, Loader2, MapPin, CheckCircle, XCircle, Clock, User, ChevronDown } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
@@ -86,26 +88,26 @@ export default function IncidentsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Incident Reports</h2>
             <p className="text-surface-400 text-sm">Report and track security & safety incidents</p>
           </div>
           <button onClick={() => setShowForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> Report Incident</button>
-        </div>
+        </motion.div>
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
             <input className="input-field pl-9 py-2 text-sm" placeholder="Search incidents..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <div className="flex gap-1 overflow-x-auto">
+          <motion.div variants={fadeUp} className="flex gap-1 overflow-x-auto">
             {['', 'submitted', 'ai_analyzed', 'under_review', 'assigned', 'resolved', 'dismissed'].map((s) => (
               <button key={s} onClick={() => setFilter(s)} className={cn('px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors', filter === s ? 'bg-primary-500 text-white' : 'bg-surface-100 dark:bg-surface-800 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-700')}>
                 {s ? s.replace('_', ' ') : 'All'}
               </button>
             ))}
-          </div>
+          </motion.div>
         </div>
 
         {loading ? (
@@ -116,9 +118,9 @@ export default function IncidentsPage() {
             <p className="text-surface-400">No incidents reported</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid gap-4 md:grid-cols-2">
             {filtered.map((inc) => (
-              <div key={inc._id} className="glass-card p-5">
+              <motion.div key={inc._id} variants={staggerItem} whileHover={{ y: -3 }} className="glass-card p-5">
                 <div className="flex items-start gap-3">
                   {inc.mediaUrl && (
                     <div className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800">
@@ -165,9 +167,9 @@ export default function IncidentsPage() {
                     </select>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
 

@@ -7,12 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const pageVariants = {
-  initial: { opacity: 0, y: 16, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const } },
-  exit: { opacity: 0, y: -12, scale: 0.98, transition: { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] as const } },
-};
+import { pageTransition } from '@/lib/animation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -23,14 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!loading && !user) router.push('/login');
   }, [user, loading, router]);
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-950">
-      <div className="text-center">
-        <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-surface-400 text-sm">Loading VisionGate...</p>
-      </div>
-    </div>
-  );
+  if (loading) return null;
   if (!user) return null;
 
   return (
@@ -38,13 +26,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <ChatBot />
       <VoiceCommandButton />
-      <div className="lg:ml-64">
+      <div className="lg:ml-64 bg-surface-50 dark:bg-surface-950 main-content-area">
         <Header />
         <main className="p-4 md:p-6 max-w-7xl mx-auto">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={pathname}
-              variants={pageVariants}
+              variants={pageTransition}
               initial="initial"
               animate="animate"
               exit="exit"

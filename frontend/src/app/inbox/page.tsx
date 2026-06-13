@@ -8,6 +8,7 @@ import { useSocket } from '@/hooks/useSocket';
 import api from '@/lib/api';
 import { cn, formatTime } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fadeUp, staggerContainer, staggerItem } from '@/lib/animation';
 import toast from 'react-hot-toast';
 
 interface ChatUser {
@@ -243,15 +244,15 @@ export default function InboxPage() {
                   No conversations yet. Switch to &quot;All Users&quot; to start one.
                 </div>
               ) : (
-                    conversations.filter((conv) => conv.lastMessage).map((conv) => {
+                    <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                      {conversations.filter((conv) => conv.lastMessage).map((conv) => {
                       const other = otherParticipant(conv);
                       if (!other) return null;
                       const unread = conv.unreadCount || unreadCounts[other._id] || 0;
                       const RoleIcon = roleIcon[other.role] || User;
                       return (
                         <div key={conv._id} className="relative group">
-                          <motion.button onClick={() => startChat(other)}
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                          <motion.button variants={staggerItem} onClick={() => startChat(other)}
                             className={cn(
                               'w-full flex items-center gap-3 p-3 transition-colors text-left border-b border-surface-50/50 dark:border-surface-800/30',
                               selectedUser?._id === other._id
@@ -262,11 +263,9 @@ export default function InboxPage() {
                               <div className="w-11 h-11 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                                 {other.name.charAt(0)}
                               </div>
-                              <motion.span
+                              <span
                                 className={cn('absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white dark:border-surface-900 rounded-full',
                                   isOnline(other._id) ? 'bg-secondary-500' : 'bg-surface-300')}
-                                animate={{ scale: isOnline(other._id) ? [1, 1.2, 1] : 1 }}
-                                transition={{ repeat: isOnline(other._id) ? Infinity : 0, duration: 2 }}
                               />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -297,7 +296,8 @@ export default function InboxPage() {
                           </button>
                         </div>
                       );
-                    })
+                    })}
+                    </motion.div>
               )
             ) : (
               <>
@@ -313,12 +313,12 @@ export default function InboxPage() {
                 {filteredUsers.length === 0 ? (
                   <div className="text-center py-12 text-surface-400 text-sm">No users found</div>
                 ) : (
-                  filteredUsers.map((u) => {
+                  <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                    {filteredUsers.map((u) => {
                     const unread = unreadCounts[u._id] || 0;
                     const RoleIcon = roleIcon[u.role] || User;
                     return (
-                      <motion.div key={u._id}
-                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      <motion.div key={u._id} variants={staggerItem}
                         className={cn(
                           'flex items-center gap-3 p-3 transition-colors border-b border-surface-50/50 dark:border-surface-800/30 relative',
                           selectedUser?._id === u._id
@@ -329,11 +329,9 @@ export default function InboxPage() {
                           <div className="w-11 h-11 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                             {u.name.charAt(0)}
                           </div>
-                          <motion.span
+                          <span
                             className={cn('absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white dark:border-surface-900 rounded-full',
                               isOnline(u._id) ? 'bg-secondary-500' : 'bg-surface-300')}
-                            animate={{ scale: isOnline(u._id) ? [1, 1.2, 1] : 1 }}
-                            transition={{ repeat: isOnline(u._id) ? Infinity : 0, duration: 2 }}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -373,7 +371,8 @@ export default function InboxPage() {
                         )}
                       </motion.div>
                     );
-                  })
+                  })}
+                  </motion.div>
                 )}
               </>
             )}
@@ -394,11 +393,9 @@ export default function InboxPage() {
                   <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
                     {selectedUser.name.charAt(0)}
                   </div>
-                  <motion.span
+                  <span
                     className={cn('absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 border-2 border-white dark:border-surface-900 rounded-full',
                       isOnline(selectedUser._id) ? 'bg-secondary-500' : 'bg-surface-300')}
-                    animate={{ scale: isOnline(selectedUser._id) ? [1, 1.3, 1] : 1 }}
-                    transition={{ repeat: isOnline(selectedUser._id) ? Infinity : 0, duration: 2 }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">

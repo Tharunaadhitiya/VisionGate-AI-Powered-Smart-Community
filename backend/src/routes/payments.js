@@ -226,7 +226,7 @@ router.put('/:id/cancel', authenticate, authorize('admin'), async (req, res) => 
 router.get('/summary', authenticate, async (req, res) => {
   try {
     const match = req.user.role === 'admin' ? {} : { recipient: req.userId };
-    const filterStr = match.recipient ? ' WHERE recipientId = ?' : '';
+    const filterStr = match.recipient ? ' AND recipientId = ?' : '';
 
     const { db } = require('../models/dbHelpers');
     const [pendingRows] = await db.query(

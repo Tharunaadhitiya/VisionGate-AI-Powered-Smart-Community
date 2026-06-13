@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import api from '@/lib/api';
 import { useAuth } from './useAuth';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001';
 
 interface ChatNotification {
   _id: string;
@@ -115,7 +115,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     fetchMyNotifications();
 
-    const socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+    const socket = io(SOCKET_URL, { auth: { token }, transports: ['polling', 'websocket'] });
     socketRef.current = socket;
 
     socket.on('connect', () => setConnected(true));

@@ -5,6 +5,8 @@ import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, User, MapPin, Briefcase, Clock, Globe, Lock, EyeOff, Filter, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const PROFESSIONS = [
   'All', 'Doctor', 'Software Engineer', 'AI Engineer', 'Data Scientist', 'Teacher',
@@ -57,12 +59,12 @@ export default function SkillsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Community Skills & Expertise</h2>
             <p className="text-surface-400 text-sm">Discover professionals and skilled residents in your community</p>
           </div>
-        </div>
+        </motion.div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -96,12 +98,12 @@ export default function SkillsPage() {
             <p className="text-xs text-surface-400 mt-1">Try adjusting your search or filter.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => {
               const VisIcon = visibilityConfig[p.skill_visibility]?.icon || Lock;
               const skills = skillTags(p.skills);
               return (
-                <div key={p._id} className="glass-card p-4 hover:shadow-xl transition-all">
+                <motion.div key={p._id} variants={staggerItem} whileHover={{ y: -3 }} className="glass-card p-4 hover:shadow-xl transition-all">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
                       {p.name?.charAt(0)?.toUpperCase() || '?'}
@@ -145,10 +147,10 @@ export default function SkillsPage() {
                       </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
     </DashboardLayout>

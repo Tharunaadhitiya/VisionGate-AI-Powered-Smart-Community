@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { X, Sun, Moon, Globe, Bell, Mail, Phone } from 'lucide-react';
+import { X, Sun, Moon, Globe, Bell, Mail, Phone, Monitor } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -81,8 +81,8 @@ export default function ThemeSettingsModal({ open, onClose }: Props) {
         <div className="p-6 space-y-5 max-h-[65vh] overflow-y-auto">
           <div>
             <label className="text-xs font-medium text-surface-400 uppercase tracking-wider mb-2.5 block">Theme Mode</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['light', 'dark', 'system'] as const).map((t) => (
+            <div className="grid grid-cols-4 gap-2">
+              {(['light', 'dark', 'contrast-black', 'system'] as const).map((t) => (
                 <button key={t}
                   onClick={() => setTheme(t)}
                   className={cn(
@@ -92,8 +92,8 @@ export default function ThemeSettingsModal({ open, onClose }: Props) {
                       : 'bg-surface-100 dark:bg-surface-800 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-700'
                   )}
                 >
-                  {t === 'light' ? <Sun className="w-4 h-4" /> : t === 'dark' ? <Moon className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
-                  {t}
+                  {t === 'light' ? <Sun className="w-4 h-4" /> : t === 'dark' ? <Moon className="w-4 h-4" /> : t === 'contrast-black' ? <Monitor className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                  {t.replace('-', ' ')}
                 </button>
               ))}
             </div>

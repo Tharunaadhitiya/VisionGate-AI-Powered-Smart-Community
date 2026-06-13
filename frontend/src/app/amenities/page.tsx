@@ -5,6 +5,8 @@ import api from '@/lib/api';
 import { Calendar, CheckCircle, XCircle, Clock, Users as UsersIcon } from 'lucide-react';
 import { cn, formatDate, getStatusColor } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { staggerContainer, staggerItem, fadeUp } from '@/lib/animation';
 
 const amenityTypes = [
   { value: 'clubhouse', label: 'Clubhouse', icon: '🏛️' },
@@ -39,22 +41,22 @@ export default function AmenitiesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Amenity Booking</h2>
             <p className="text-surface-400 text-sm">Book community amenities</p>
           </div>
           <button onClick={() => setShowForm(true)} className="btn-primary"><Calendar className="w-4 h-4" /> Book Now</button>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {amenityTypes.map((a) => (
-            <div key={a.value} className="glass-card p-4 text-center hover:-translate-y-0.5 transition-all cursor-pointer" onClick={() => { setForm({ ...form, amenityType: a.value }); setShowForm(true); }}>
+            <motion.div key={a.value} variants={staggerItem} whileHover={{ y: -4, scale: 1.02 }} className="glass-card p-4 text-center hover:-translate-y-0.5 transition-all cursor-pointer" onClick={() => { setForm({ ...form, amenityType: a.value }); setShowForm(true); }}>
               <span className="text-2xl mb-2 block">{a.icon}</span>
               <p className="text-sm font-medium">{a.label}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" /></div>

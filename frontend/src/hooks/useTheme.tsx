@@ -1,8 +1,21 @@
 'use client';
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 
-type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'contrast-black' | 'system';
 type AccentColor = 'blue' | 'purple' | 'green' | 'orange' | 'red';
+
+const THEME_KEY = 'vg_theme';
+const ACCENT_KEY = 'vg_accent';
+
+function isTheme(v: string | null): v is Theme {
+  return v === 'light' || v === 'dark' || v === 'contrast-black' || v === 'system';
+}
+
+function isAccent(v: string | null): v is AccentColor {
+  return v === 'blue' || v === 'purple' || v === 'green' || v === 'orange' || v === 'red';
+}
+
+export type { AccentColor };
 
 interface ThemeContextType {
   theme: Theme;
@@ -46,45 +59,61 @@ function getSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function resolveTheme(theme: Theme): 'light' | 'dark' {
+  if (theme === 'system') return getSystemTheme();
+  if (theme === 'contrast-black') return 'dark';
+  return theme;
+}
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('system');
   const [accentColor, setAccentColorState] = useState<AccentColor>('blue');
   const [mounted, setMounted] = useState(false);
+  const mqRef = useRef<MediaQueryList | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('vg_theme') as Theme | null;
-    const savedAccent = localStorage.getItem('vg_accent') as AccentColor | null;
-    if (saved) setThemeState(saved);
-    if (savedAccent) setAccentColorState(savedAccent);
+    const saved = localStorage.getItem(THEME_KEY);
+    const savedAccent = localStorage.getItem(ACCENT_KEY);
+    if (isTheme(saved)) setThemeState(saved);
+    if (isAccent(savedAccent)) setAccentColorState(savedAccent);
     setMounted(true);
   }, []);
 
-  const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+  const resolved = resolveTheme(theme);
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    localStorage.setItem('vg_theme', t);
+    localStorage.setItem(THEME_KEY, t);
   }, []);
 
   const setAccentColor = useCallback((c: AccentColor) => {
     setAccentColorState(c);
-    localStorage.setItem('vg_accent', c);
+    localStorage.setItem(ACCENT_KEY, c);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  }, [resolvedTheme, setTheme]);
+    if (theme === 'light') setTheme('dark');
+    else if (theme === 'dark') setTheme('contrast-black');
+    else if (theme === 'contrast-black') setTheme('system');
+    else setTheme('light');
+  }, [theme, setTheme]);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (resolvedTheme === 'dark') {
+    if (resolved === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-  }, [resolvedTheme]);
+
+    if (theme === 'contrast-black') {
+      root.setAttribute('data-theme', 'contrast-black');
+    } else {
+      root.removeAttribute('data-theme');
+    }
+  }, [resolved, theme]);
 
   useEffect(() => {
     const palette = accentPalettes[accentColor];
@@ -95,19 +124,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [accentColor]);
 
   useEffect(() => {
+    mqRef.current = window.matchMedia('(prefers-color-scheme: dark)');
     if (theme !== 'system') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handler = () => {
-      const root = document.documentElement;
-      if (mq.matches) root.classList.add('dark');
-      else root.classList.remove('dark');
+      if (mqRef.current!.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    mqRef.current.addEventListener('change', handler);
+    return () => mqRef.current?.removeEventListener('change', handler);
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, accentColor, resolvedTheme, setTheme, setAccentColor, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, accentColor, resolvedTheme: resolved, setTheme, setAccentColor, toggleTheme }}>
       {mounted ? children : <>{children}</>}
     </ThemeContext.Provider>
   );

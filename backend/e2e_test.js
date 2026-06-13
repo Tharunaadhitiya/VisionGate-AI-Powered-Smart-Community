@@ -1,6 +1,6 @@
 const http = require('http');
 const config = require('./src/config');
-const PORT = config.port || 5000;
+const PORT = config.port || 5001;
 
 function api(method, path, body, token) {
   return new Promise((resolve, reject) => {
