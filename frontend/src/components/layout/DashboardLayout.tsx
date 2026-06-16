@@ -4,12 +4,15 @@ import Header from './Header';
 import ChatBot from '@/components/chatbot/ChatBot';
 import VoiceCommandButton from '@/components/voice/VoiceCommandButton';
 import { useAuth } from '@/hooks/useAuth';
+import { useSidebar, SidebarProvider } from '@/hooks/useSidebar';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pageTransition } from '@/lib/animation';
+import { cn } from '@/lib/utils';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
+  const { expanded } = useSidebar();
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -26,7 +29,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <ChatBot />
       <VoiceCommandButton />
-      <div className="lg:ml-64 bg-surface-50 dark:bg-surface-950 main-content-area">
+      <div className={cn(
+        'bg-surface-50 dark:bg-surface-950 main-content-area transition-all duration-300 ease-out',
+        expanded ? 'lg:ml-64' : 'lg:ml-20'
+      )}>
         <Header />
         <main className="p-4 md:p-6 max-w-7xl mx-auto">
           <AnimatePresence>
@@ -43,5 +49,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </SidebarProvider>
   );
 }

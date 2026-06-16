@@ -3,12 +3,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useSidebar } from '@/hooks/useSidebar';
 import {
   Home, Users, Shield, Bell, AlertTriangle, FileText, CreditCard,
   Calendar, Camera, BarChart3, MessageSquare, LogOut,
-  X, Menu,   BookUser, Megaphone, Bug, Package, Search, Briefcase, Settings,
+  X, Menu, BookUser, Megaphone, Bug, Package, Search, Briefcase, Settings,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
 import { MessageSquareText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/hooks/useTheme';
@@ -61,37 +62,16 @@ const roleLinks: Record<string, { href: string; label: string; icon: any }[]> = 
   ],
 };
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.04, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, x: -12 },
-  show: { opacity: 1, x: 0, transition: { type: 'spring' as const, stiffness: 200, damping: 25 } },
-};
-
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
   const isContrastBlack = theme === 'contrast-black';
+  const { expanded, toggle, mobileOpen, setMobileOpen } = useSidebar();
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const links = user ? roleLinks[user.role] || roleLinks.resident : [];
 
   return (
     <>
-      <motion.button
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2.5 glass-card"
-      >
-        <Menu className="w-5 h-5" />
-      </motion.button>
-
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -105,122 +85,168 @@ export default function Sidebar() {
       </AnimatePresence>
 
       <aside className={cn(
-        'fixed top-0 left-0 z-50 h-full w-64 glass-card-strong border-r border-surface-200/50 dark:border-surface-700/50 transform transition-transform duration-300 ease-out lg:translate-x-0',
+        'fixed top-0 left-0 z-50 h-full glass-card-strong border-r border-surface-200/50 dark:border-surface-700/50 transition-all duration-300 ease-out',
         isContrastBlack && 'dark:bg-surface-950/95',
+        'lg:translate-x-0',
+        expanded ? 'w-64' : 'w-20',
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-5 border-b border-surface-200/50 dark:border-surface-700/50">
-            <Link href="/" className="flex items-center gap-2.5 group">
+          <div className={cn(
+            'flex items-center border-b border-surface-200/50 dark:border-surface-700/50 transition-all duration-300 ease-out',
+            expanded ? 'justify-between p-5' : 'justify-center p-4'
+          )}>
+            <Link href="/" className={cn(
+              'flex items-center group',
+              expanded ? 'gap-2.5' : 'gap-0 justify-center'
+            )}>
               <motion.div
                 whileHover={{ rotate: -10, scale: 1.1 }}
-                className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/25 group-hover:shadow-primary-500/40 transition-shadow"
+                className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/25 group-hover:shadow-primary-500/40 transition-shadow shrink-0"
               >
                 <Shield className="w-4.5 h-4.5 text-white" />
               </motion.div>
-              <span className="font-bold text-lg tracking-tight">
+              <span className={cn(
+                'font-bold text-lg tracking-tight overflow-hidden transition-all duration-300 ease-out',
+                expanded ? 'max-w-[120px] opacity-100 ml-0' : 'max-w-0 opacity-0 ml-0'
+              )}>
                 <span className="text-gradient-premium">Vision</span><span className="text-surface-400">Gate</span>
               </span>
             </Link>
             <motion.button
               whileTap={{ scale: 0.85 }}
               onClick={() => setMobileOpen(false)}
-              className="lg:hidden p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              className={cn(
+                'p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors',
+                expanded ? 'lg:hidden' : 'hidden'
+              )}
             >
               <X className="w-4 h-4" />
             </motion.button>
           </div>
 
           <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 scrollbar-hide">
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-              className="space-y-0.5"
-            >
-              {links.map((link, i) => {
+            <div className="space-y-0.5">
+              {links.map((link) => {
                 const Icon = link.icon;
                 const active = pathname === link.href || pathname.startsWith(link.href + '/');
                 return (
-                  <motion.div key={link.href} variants={itemVariants}>
-                    <Link href={link.href}
-                      onClick={() => setMobileOpen(false)}
-                      className={cn(
-                        'relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden',
-                        active
-                          ? 'text-primary-700 dark:text-primary-400'
-                          : 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200'
-                      )}
-                    >
-                      {active && (
-                        <motion.div
-                          layoutId="sidebar-active"
-                          className={cn(
-                            'absolute inset-0 rounded-xl',
-                            isContrastBlack ? 'bg-primary-500/15' : 'bg-primary-50 dark:bg-primary-500/10'
-                          )}
-                          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        />
-                      )}
-                      {active && (
-                        <motion.div
-                          layoutId="sidebar-glow"
-                          className={cn(
-                            'absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full',
-                            isContrastBlack ? 'shadow-lg shadow-primary-500/70' : 'shadow-lg shadow-primary-500/50'
-                          )}
-                          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        />
-                      )}
+                  <Link key={link.href} href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    title={!expanded ? link.label : undefined}
+                    className={cn(
+                      'relative flex items-center rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden',
+                      expanded ? 'gap-3 px-3 py-2.5' : 'gap-0 px-0 py-2.5 justify-center',
+                      active
+                        ? 'text-primary-700 dark:text-primary-400'
+                        : 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200'
+                    )}
+                  >
+                    {active && (
                       <motion.div
-                        whileHover={{ x: 3 }}
-                        transition={{ duration: 0.12 }}
+                        layoutId="sidebar-active"
                         className={cn(
-                          'relative z-10 w-5 h-5 flex items-center justify-center transition-colors duration-200',
-                          active ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400 group-hover:text-surface-600 dark:group-hover:text-surface-300'
+                          'absolute inset-0 rounded-xl',
+                          isContrastBlack ? 'bg-primary-500/15' : 'bg-primary-50 dark:bg-primary-500/10'
                         )}
-                      >
-                        <Icon className="w-5 h-5" />
-                      </motion.div>
-                      <span className="relative z-10">{link.label}</span>
-                      {active && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="ml-auto relative z-10 w-1.5 h-1.5 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50"
-                        />
-                      )}
-                    </Link>
-                  </motion.div>
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    {active && (
+                      <motion.div
+                        layoutId="sidebar-glow"
+                        className={cn(
+                          'absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full',
+                          isContrastBlack ? 'shadow-lg shadow-primary-500/70' : 'shadow-lg shadow-primary-500/50'
+                        )}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    <div className={cn(
+                      'relative z-10 w-5 h-5 flex items-center justify-center shrink-0 transition-colors duration-200',
+                      active ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400 group-hover:text-surface-600 dark:group-hover:text-surface-300'
+                    )}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className={cn(
+                      'relative z-10 overflow-hidden whitespace-nowrap transition-all duration-300 ease-out',
+                      expanded ? 'max-w-[140px] opacity-100' : 'max-w-0 opacity-0'
+                    )}>
+                      {link.label}
+                    </span>
+                    {active && expanded && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="ml-auto relative z-10 w-1.5 h-1.5 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50 shrink-0"
+                      />
+                    )}
+                  </Link>
                 );
               })}
-            </motion.div>
+            </div>
           </nav>
 
           <div className="p-3 border-t border-surface-200/50 dark:border-surface-700/50">
-            <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className={cn(
+              'flex items-center mb-2 transition-all duration-300 ease-out',
+              expanded ? 'gap-3 px-3 py-2' : 'gap-0 px-0 py-2 justify-center'
+            )}>
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className="relative"
+                className="relative shrink-0"
+                title={!expanded ? user?.name : undefined}
               >
                 <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-md">
                   {user?.name?.charAt(0)?.toUpperCase()}
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 border-2 border-white dark:border-surface-900 rounded-full" />
               </motion.div>
-              <div className="flex-1 min-w-0">
+              <div className={cn(
+                'flex-1 min-w-0 overflow-hidden transition-all duration-300 ease-out',
+                expanded ? 'max-w-[140px] opacity-100' : 'max-w-0 opacity-0'
+              )}>
                 <p className="text-sm font-medium truncate text-surface-900 dark:text-surface-100">{user?.name}</p>
                 <p className="text-xs text-surface-400 capitalize">{user?.role}</p>
               </div>
             </div>
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={logout}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-surface-500 dark:text-surface-400 hover:bg-danger-50 dark:hover:bg-danger-500/10 hover:text-danger-600 dark:hover:text-danger-400 transition-all duration-200 group"
+              title={!expanded ? 'Sign Out' : undefined}
+              className={cn(
+                'flex items-center w-full rounded-xl text-sm font-medium transition-all duration-200 group',
+                expanded ? 'gap-3 px-3 py-2.5' : 'gap-0 px-0 py-2.5 justify-center',
+                'text-surface-500 dark:text-surface-400 hover:bg-danger-50 dark:hover:bg-danger-500/10 hover:text-danger-600 dark:hover:text-danger-400'
+              )}
             >
-              <LogOut className="w-4.5 h-4.5 transition-transform group-hover:-translate-x-0.5" />
-              Sign Out
+              <LogOut className={cn(
+                'w-4.5 h-4.5 shrink-0 transition-transform group-hover:-translate-x-0.5',
+                expanded ? '' : 'group-hover:translate-x-0'
+              )} />
+              <span className={cn(
+                'overflow-hidden whitespace-nowrap transition-all duration-300 ease-out',
+                expanded ? 'max-w-[100px] opacity-100' : 'max-w-0 opacity-0'
+              )}>
+                Sign Out
+              </span>
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={toggle}
+              title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
+              className={cn(
+                'hidden lg:flex items-center justify-center w-full mt-2 p-2 rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-all duration-200',
+              )}
+            >
+              {expanded ? (
+                <ChevronLeft className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
             </motion.button>
           </div>
         </div>
