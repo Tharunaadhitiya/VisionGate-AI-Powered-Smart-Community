@@ -2,7 +2,9 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { useTheme } from '@/hooks/useTheme';
-import { Bell, MessageSquare, Sun, Moon, User, Settings, Lock, Palette, LogOut, ChevronRight, Search } from 'lucide-react';
+import { useSidebar } from '@/hooks/useSidebar';
+import { useIsMobile } from '@/hooks/useMediaQuery';
+import { Bell, MessageSquare, Sun, Moon, User, Settings, Lock, Palette, LogOut, ChevronRight, Search, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useRef, useEffect } from 'react';
 import NotificationPanel from '@/components/notifications/NotificationPanel';
@@ -33,6 +35,8 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { myNotifications, notifications, chatNotifications, clearNotifications, clearChatNotifications, connected, setOpenChatTarget, unreadCount, markNotificationRead, markNotificationUnread, deleteNotification, clearAllNotifications } = useSocket();
   const { resolvedTheme, toggleTheme } = useTheme();
+  const { expanded, toggle, mobileOpen, setMobileOpen } = useSidebar();
+  const isMobile = useIsMobile();
   const [showNotifications, setShowNotifications] = useState(false);
   const [detailNotification, setDetailNotification] = useState<any | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -80,11 +84,22 @@ export default function Header() {
     <>
       <header className="sticky top-0 z-30 glass-card-strong border-b border-surface-200/50 dark:border-surface-700/50 rounded-none">
         <div className="flex items-center justify-between px-4 md:px-6 py-3">
-          <div>
-            <h1 className="text-lg font-semibold text-surface-900 dark:text-surface-100 capitalize">
-              {user?.role} Dashboard
-            </h1>
-            <p className="text-xs text-surface-400">{getGreeting()}, {user?.name}</p>
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => isMobile ? setMobileOpen(!mobileOpen) : toggle()}
+              className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+              title={isMobile ? (mobileOpen ? 'Close sidebar' : 'Open sidebar') : (expanded ? 'Collapse sidebar' : 'Expand sidebar')}
+              aria-label={isMobile ? (mobileOpen ? 'Close sidebar' : 'Open sidebar') : (expanded ? 'Collapse sidebar' : 'Expand sidebar')}
+            >
+              <Menu className="w-5 h-5 text-surface-600 dark:text-surface-400" />
+            </motion.button>
+            <div>
+              <h1 className="text-lg font-semibold text-surface-900 dark:text-surface-100 capitalize">
+                {user?.role} Dashboard
+              </h1>
+              <p className="text-xs text-surface-400">{getGreeting()}, {user?.name}</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

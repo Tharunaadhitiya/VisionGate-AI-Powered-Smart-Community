@@ -87,9 +87,10 @@ export default function Sidebar() {
       <aside className={cn(
         'fixed top-0 left-0 z-50 h-full glass-card-strong border-r border-surface-200/50 dark:border-surface-700/50 transition-all duration-300 ease-out',
         isContrastBlack && 'dark:bg-surface-950/95',
+        'w-full lg:w-auto',
         'lg:translate-x-0',
-        expanded ? 'w-64' : 'w-20',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        expanded ? 'lg:w-64' : 'lg:w-20',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
         <div className="flex flex-col h-full">
           <div className={cn(
