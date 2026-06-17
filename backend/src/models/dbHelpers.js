@@ -12,7 +12,7 @@ function buildWhere(conditions) {
     if (val && typeof val === 'object' && !Array.isArray(val)) {
       for (const [op, opVal] of Object.entries(val)) {
         if (op === '$in') { clauses.push(`\`${key}\` IN (${opVal.map(() => '?').join(',')})`); params.push(...opVal); }
-        else if (op === '$ne') { clauses.push(`\`${key}\` != ?`); params.push(opVal); }
+        else if (op === '$ne') { if (opVal === null) clauses.push(`\`${key}\` IS NOT NULL`); else { clauses.push(`\`${key}\` != ?`); params.push(opVal); } }
         else if (op === '$gte') { clauses.push(`\`${key}\` >= ?`); params.push(opVal); }
         else if (op === '$lte') { clauses.push(`\`${key}\` <= ?`); params.push(opVal); }
         else if (op === '$gt') { clauses.push(`\`${key}\` > ?`); params.push(opVal); }

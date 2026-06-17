@@ -84,7 +84,7 @@ export default function MaintenancePage() {
       <div className="space-y-6">
         <motion.div variants={fadeUp}>
           <h2 className="text-2xl font-bold">Maintenance & Dues</h2>
-          <p className="text-surface-400 text-sm">View and pay all charges assigned to you</p>
+          <p className="text-surface-400 text-sm">{user?.role === 'resident' ? 'View and pay all charges assigned to you' : 'View and manage all community charges'}</p>
         </motion.div>
 
         <motion.div variants={staggerContainer} className="card-grid">
@@ -151,8 +151,14 @@ export default function MaintenancePage() {
                         {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
                       </span>
                     </div>
-                    {!isPaid && (
+                    {!isPaid && user?.role === 'resident' && (
                       <button onClick={() => handlePayClick(p)} className="btn-primary text-xs px-4 py-2">Pay Now</button>
+                    )}
+                    {!isPaid && user?.role === 'admin' && (
+                      <button className="btn-secondary text-xs px-4 py-2">Manage Charge</button>
+                    )}
+                    {!isPaid && user?.role === 'security' && (
+                      <button className="btn-secondary text-xs px-4 py-2">View Details</button>
                     )}
                   </div>
                 </motion.div>

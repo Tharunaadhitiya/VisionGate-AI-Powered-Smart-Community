@@ -63,6 +63,29 @@ const Complaint = {
     }
     if (groupStage) {
       const groupBy = groupStage.$group._id;
+      if (groupBy === null) {
+        let q = 'SELECT ';
+        const aggParts = [];
+        for (const [k, v] of Object.entries(groupStage.$group)) {
+          if (k === '_id') continue;
+          if (v.$avg) {
+            const avgField = v.$avg.replace('$', '');
+            let expr = `\`${avgField}\``;
+            if (projectStage) {
+              const diffEntry = Object.entries(projectStage.$project).find(([, pv]) => typeof pv === 'object' && pv.$subtract);
+              if (diffEntry && diffEntry[0] === avgField) {
+                const parts = projectStage.$project[diffEntry[0]].$subtract;
+                expr = `TIMESTAMPDIFF(SECOND, ${parts[0].replace('$', '')}, ${parts[1].replace('$', '')})`;
+              }
+            }
+            aggParts.push(`AVG(${expr}) AS \`${k}\``);
+          } else if (v.$sum === 1) aggParts.push(`COUNT(*) AS \`${k}\``);
+          else if (v.$sum) aggParts.push(`COALESCE(SUM(${v.$sum.replace('$', '')}), 0) AS \`${k}\``);
+        }
+        q += aggParts.join(', ');
+        q += ` FROM ${TABLE}${whereClause}`;
+        return db.query(q, replacements);
+      }
       const field = groupBy.replace('$', '');
       let q = `SELECT ${field} AS _id`;
       for (const [k, v] of Object.entries(groupStage.$group)) {
